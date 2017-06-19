@@ -1,0 +1,23 @@
+{% extends "base_layout.jinja" %}
+
+{% import 'forms.jinja' as forms %}
+
+{% set active_page = "geotagging" -%}
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui divider horizontal header">Geo Tagging</h2>
+    <div class="ui text vertical segment ">
+        A service to add geographical identification metadata to CSV tables.
+    </div>
+
+    <div>
+        {{ forms.submit('ui.geotagging', 'GO') }}
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+    {{ forms.js() }}
+{% endblock %}

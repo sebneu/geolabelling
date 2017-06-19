@@ -1,0 +1,125 @@
+{% macro table_fromData(data, actionLabel, actionURL) -%}
+{{table(data.title, data.cols, data.rows, data.encoding, data.delimiter, data.sample, data.orig, actionLabel, actionURL, data.tagging, data.disambiguation)}}
+{%- endmacro %}
+{% macro table(url, cols, rows, encoding, delimiter, sample, orig, actionLabel, actionURL, tagging, disambiguation) -%}
+    <div class="ui segments">
+        {{ tableHeader(url, cols, rows, encoding, delimiter) }}
+        <div class="ui center aligned container showhide" id="tt3" >
+            <button class="circular ui icon button btn-showhide" >
+                <i class="angle double down icon"></i>
+            </button>
+        </div>
+
+        <div class="ui center aligned segment tableData" style="display:none;">
+            <div class="ui container">
+                {% if sample and orig %}
+                <div class="ui slider checkbox">
+                    <input type="checkbox" id="switch1" checked="checked">
+                    <label>Table Preview</label>
+                </div>
+                {% endif %}
+                {% if sample %}
+                <div class="table tablewrapper">
+                    <table class="ui celled table">
+                        <thead>
+                            <tr>
+                            {% for header in sample[0] %}
+                                <th>{{header}}</th>
+                            {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            {% for tag in tagging %}
+                                {% if tag %}
+                                    <td class="positive">{{tag}}</td>
+                                {% else %}
+                                    <td></td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                        {% for row in sample %}
+                           {% if loop.index != 1 %}
+                           {% set outer_loop = loop %}
+                           <tr>
+                               {% for value in row %}
+                                   {% if disambiguation[loop.index-1][outer_loop.index-1] %}
+                                        <td class="selectable positive">
+                                            <a href="{{disambiguation[loop.index-1][outer_loop.index-1]}}" target="_blank">{{value}}</a>
+                                        </td>
+                                   {% else %}
+                                        <td>{{value}}</td>
+                                   {% endif  %}
+                               {% endfor %}
+                           </tr>
+                           {% endif  %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                {%if orig %}
+                <div class="raw" {% if sample %} style="display:none;" {% endif %}>
+                    <pre style="height:300px; overflow-y:auto;">{{ orig }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="ui segment">
+            <form action="{{actionURL }}" method="post">
+            <button class="ui primary button" type="submit">{{actionLabel}}</button>
+            </form>            
+        </div>
+    </div>
+{%- endmacro %}
+
+
+{% macro tableHeader(url, cols, rows, encoding, delimiter) -%}
+ <div class="ui center aligned segment">
+	 <h3 style="margin:0px">
+         <a class="urlize" href="{{ url }}" id="url">{{ url }}</a>
+	     <div class="sub header">
+
+        	<p  class="icon" id="colrows"><i class="table icon"></i>{{ rows }}  x {{ cols}}</p>
+	         {% if encoding %} 
+                <b>{{ encoding }}</b> encoded
+	         {% endif %}
+	         {% if delimiter %}
+	            <b>{{ delimiter }}</b> delimiter
+	         {% endif %}
+	     </div>
+	 </h3>
+</div>
+{%- endmacro %}
+
+
+{% macro tableCSS() -%}
+    .urlize{
+        overflow: hidden; /* to hide anything that doesn't fit in the containing element. */
+        white-space: nowrap; /* to make sure the line doesn't break when it is longer than the containing div. */
+        text-overflow: ellipsis; /* to do what you want. */
+   }
+{%- endmacro %}
+
+
+{% macro tableJS() -%}
+
+    $(".btn-showhide").click(function(){
+
+        table = $(this).parent().siblings(".tableData")
+        table.toggle()
+        $(this).find('i').toggleClass('down')
+        $(this).find('i').toggleClass('up')
+    });
+    $('.checkbox').checkbox({
+        onChecked: function() {
+            table = $(this).parent().siblings(".table").show()
+            raw = $(this).parent().siblings(".raw").hide()
+        },
+        onUnchecked: function() {
+            table = $(this).parent().siblings(".table").hide()
+            raw = $(this).parent().siblings(".raw").show()
+        }
+    });
+{%- endmacro %}

@@ -1,0 +1,10 @@
+data:
+    submit: 'data/submit/'
+
+db:
+    host: 'localhost'
+    port: 27017
+
+ui:
+    maxFileSize: 1048576
+    port: 2340

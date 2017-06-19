@@ -1,0 +1,31 @@
+{% extends "base_layout.jinja" %}
+
+{% import 'table_factory.jinja' as tFactory %}
+{% import 'forms.jinja' as forms %}
+
+{% set active_page = "clean" -%}
+
+
+{% block style %}
+   {{ tFactory.tableCSS()}}
+{% endblock %}
+
+
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui divider horizontal header">CSV Geo Tagging</h2>
+    <div class="ui text vertical segment ">
+        {{tFactory.table_fromData(data, 'Download', url_for('ui.get_geotagging_file'))}}
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+    {{ tFactory.tableJS() }}
+{% endblock %}
+
+
+

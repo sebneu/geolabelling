@@ -1,0 +1,95 @@
+{% macro submit(service, button) -%}
+<div class="ui container">
+    <form action="{{ url_for('ui.submit')}}" method=post enctype=multipart/form-data id="form" class="ui form">
+
+        <div class="ui container">
+            <input type="hidden" name="service" value="{{ service }}_service">
+            <div class="ui top attached tabular menu">
+                <a class="active item" data-tab="urlSubmit">URL</a>
+                <a class="item" data-tab="fileSubmit">File</a>
+                <a class="item" data-tab="textSubmit">Copy & Paste</a>
+            </div>
+
+            <div class="ui bottom attached active tab segment" data-tab="urlSubmit">
+            <!-- URL submission -->
+                <div class="field">
+                    <!-- pattern="(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+\.[^\s]{2,})" -->
+                    <input type="text" id="url" name='url' placeholder="URL"/>
+                </div>
+            </div>
+
+            <div class="ui bottom attached tab segment" data-tab="fileSubmit">
+            <!--  File ID submission -->
+                <div class="ui grid">
+                    <div class="eight wide column">
+                        <input class="field" type="text" id="fileID" name='fileID' placeholder="Existing File id"/>
+                    </div>
+                <!--  file upload -->
+                    <div class="eight wide column">
+                        <div class="ui action input fluid">
+                            <input class="field"  type="text" id="Upload" placeholder="File upload" name="fileUpload" readonly />
+                            <button class="ui button">
+                              <div class="visible content">Upload</div>
+                              <div class="hidden content">
+                                <i class="file icon"></i>
+                              </div>
+                              <input type="file" id="uploadBtn" name="uploadBtn" style="display:none" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+            <div class="ui bottom attached tab segment" data-tab="textSubmit">
+                <!--  copy paste -->
+                <div class="field">
+                    <textarea rows= "3" id="textUpload" cols="80" name="textUpload" placeholder="CSV lines..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui two column grid">
+            <div class="column">
+                <button class="ui primary button" id="submit">{{ button }}</button>
+             </div>
+             <div class="column">
+                <div class="ui checkbox">
+                    <input type="checkbox" id="chkbox1" name="check" class="ui checkbox">
+                    <label>Please, do not cache my data!</label>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>    
+{%- endmacro %}
+
+{% macro js() -%}
+    document.getElementById("uploadBtn").onchange = function () {
+        document.getElementById("Upload").value = this.files[0].name;
+    };
+    $("#form").submit(function(e) {
+        emptyInput = $('input:text').filter(function() { return $(this).val() == ""; }).length
+        if( !$("#textUpload").val() && emptyInput ==3) {
+            alert("No input specified")
+            return false
+        }
+        if( emptyInput < 2 || ( emptyInput != 3 && $("#textUpload").val() ) )  {
+            alert('Multiple input fields are provided');
+            return false;
+        }
+        return true;
+        
+    })
+    $('.top.menu .item').tab();
+    $('.ui.form').form({
+      fields: {
+        url: {
+          identifier: 'url',
+          rules: [{
+            type: 'regExp',
+            value: '^$|(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+\.[^\s]{2,})',
+          }]
+        }
+      }
+    });
+{%- endmacro %}

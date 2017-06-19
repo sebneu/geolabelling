@@ -1,0 +1,148 @@
+{% extends "base_layout.jinja" %}
+
+{% set active_page = "search" -%}
+
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui divider horizontal header">CSV Search</h2>
+    <p style="margin-bottom: 1cm"/>
+    <div class="container ui">
+        <div class="ui text vertical segment ">
+            <div class="ui search">
+                <div class="ui fluid right labeled left icon input">
+                    <i class="search icon"></i>
+                    <input id="keyword" type="text" value="{% if "keyword" in data %}{{data.keyword}}{% else %}{% endif %}"></input>
+                    <a id="submit" class="ui tag label">Search </a>
+                </div>
+                {% if "total" in data %}
+                    <div class="ui horizontal label">{{data.total}} results</div>
+                {% endif %}
+            </div>
+        </div>
+
+
+        {% if "results" in data %}
+            {% if data.results|length > 0 %}
+                <div class="ui relaxed divided list">
+                    {% for r in data.results %}
+                        <div class="item">
+                          <div class="ui grid">
+                            <div class="one wide column">
+                              <div class="ui list">
+                                  <div class="item">
+                                    <button class="primary circular ui icon button clean" >
+                                        <i class="table icon"></i>
+                                    </button>
+                                  </div>
+                                  <div class="item">
+                                    <button class="primary circular ui icon button profile" >
+                                        <i class="bar chart icon"></i>
+                                    </button>
+                                  </div>
+                                  <div class="item">
+                                    <button class="primary circular ui icon button" >
+                                        <i class="info icon"></i>
+                                    </button>
+                                  </div>
+                              </div>
+                            </div>
+                            <div class="fifteen wide column">
+                              <div class="one wide column">
+                              <div class="content">
+                                <div class="ui grid">
+                                  <div class="fifteen wide column">
+                                    <div class="header"><a href="{{r.url}}">{{r.url}}</a></div>
+                                    <div class="description">{{r.portal}}</div>
+                                  </div>
+                                  <div class="one wide column">
+                                    <button class="ui icon circular button" style="visibility:hidden"><i class="diamond icon"></i></button>
+                                  </div>
+                                </div>
+                                {% if r.row %}
+                                    <table class="ui fixed table">
+                                        {% if r.headers %}
+                                        <thead>
+                                            <tr>
+                                            {% for header in r.headers %}
+                                                <th>{{header}}</th>
+                                            {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        {% endif %}
+                                        <tbody>
+                                           <tr>
+                                               {% for value in r.row %}
+                                                   <td>{{value}}</td>
+                                               {% endfor %}
+                                           </tr>
+                                        </tbody>
+                                    </table>
+                                {% endif %}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="ui center aligned segment"><h4>No results found</h4></div>
+            {% endif %}
+
+        {% if data.total > 10 %}
+        <div class="ui container center aligned" style="margin-bottom: 2cm">
+            <div class="ui pagination menu">
+
+                {% for p_i in data.pages %}
+                  {% if p_i == data.currentPage %}
+                      <a class="item active">
+                        {{p_i}}
+                      </a>
+
+                  {% else %}
+                      <a class="item">
+                        {{p_i}}
+                      </a>
+                  {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+     $("#keyword").keyup(function(event){
+         if(event.keyCode == 13){
+             $("#submit").click();
+         }
+     });
+
+     $("#submit").click(function() {
+        var input = document.getElementById("keyword").value;
+        a = "{{ url_for('ui.search')}}"
+        if(input.length >0){
+        a+="?q="+input
+            window.location.href=a
+        }
+     });
+
+     $(".clean").click(function() {
+        url = $(this).closest('.ui .grid');
+        var urlval = url.find('div.header').children().text();
+        a = "{{ url_for('ui.geotagging_service')}}"
+        window.location.href=a+"?url="+urlval
+     });
+
+     $(".pagination .item").click(function(){
+            var input = "{{data.keyword}}";
+            a = "{{ url_for('ui.search')}}"
+            if(input.length >0){
+                var page = $.trim(decodeURIComponent($(this).text()).replace(/[\t\n]+/g,' '));
+                a+="?q="+input+"&page="+page
+                window.location.href=a
+            }
+         });
+{% endblock %}
