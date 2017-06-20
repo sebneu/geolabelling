@@ -11,8 +11,11 @@ import csv
 import rdflib
 from rdflib.namespace import RDF, RDFS, OWL
 from rdflib import Namespace
+import sparql
 
 GN = Namespace('http://www.geonames.org/ontology#')
+
+WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql'
 
 
 def postalcode_csv_to_mongo(client, args):
@@ -171,7 +174,6 @@ def keyword_extraction(client, args):
                 logging.debug('Exception for entry: ' + entry)
                 logging.debug(e)
 
-            break
         print len(names)
 
         for n in names:
@@ -183,12 +185,35 @@ def dbpedia_links_to_mongo(client, args):
     geonames = db.geonames
 
     g = rdflib.Graph()
-    g.parse('local/geonames_links_en.ttl', format="nt")
+    g.parse('local/dbpedia/geonames_links_en.ttl', format="nt")
 
     for dbp, geon in g.subject_objects(OWL.sameAs):
         entry = geonames.find_one({'_id': geon, 'dbpedia': {'$exists': False}})
         if entry:
             geonames.update_one({'_id': geon}, {'$set': {'dbpedia': dbp}})
+        else:
+            logging.debug('Geonames entry not in DB: ' + str(geon))
+
+
+
+def wikidata_links_to_mongo(client, args):
+    db = client.geostore
+    geonames = db.geonames
+
+    s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+    statement = '''
+    SELECT ?s ?o WHERE {
+      ?s wdt:P1566 ?o
+    }
+    '''
+    result = s.query(statement)
+    for row in result.fetchone():
+        wikid = row[0].value
+        geon = 'http://sws.geonames.org/' + row[1].value + '/'
+
+        entry = geonames.find_one({'_id': geon, 'wikidata': {'$exists': False}})
+        if entry:
+            geonames.update_one({'_id': geon}, {'$set': {'wikidata': wikid}})
         else:
             logging.debug('Geonames entry not in DB: ' + str(geon))
 
@@ -218,6 +243,10 @@ if __name__ == "__main__":
     # create the parser for the "dbpedia" command
     subparser = subparsers.add_parser('dbpedia')
     subparser.set_defaults(func=dbpedia_links_to_mongo)
+
+    # create the parser for the "dbpedia" command
+    subparser = subparsers.add_parser('wikidata')
+    subparser.set_defaults(func=wikidata_links_to_mongo)
 
     args = parser.parse_args()
 
