@@ -70,8 +70,8 @@ def geotagging():
 def geotagging_service():
     url = request.args.get("url")
     #testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpdata.linz.gv.atkatalogstadtgebaeudeanzahlwohnungen2006tgeanzwg2006.csv'
-    #testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpservice.stmk.gv.atogdOGDDataABT17statistikSTMK01012015SEX2015.csv'
-    testfile = '/home/neumaier/Repos/odgraph/local/testdata/plz.csv'
+    testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpservice.stmk.gv.atogdOGDDataABT17statistikSTMK01012015SEX2015.csv'
+    #testfile = '/home/neumaier/Repos/odgraph/local/testdata/plz.csv'
     title = testfile[-20:]
 
     with open(testfile) as f:

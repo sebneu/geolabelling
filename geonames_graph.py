@@ -9,9 +9,8 @@ from pymongo import MongoClient
 
 import csv
 import rdflib
-from rdflib.namespace import RDF, RDFS
+from rdflib.namespace import RDF, RDFS, OWL
 from rdflib import Namespace
-from rdflib.term import URIRef
 
 GN = Namespace('http://www.geonames.org/ontology#')
 
@@ -22,7 +21,7 @@ def postalcode_csv_to_mongo(client, args):
     postalcodes_collection = db.postalcodes
     postalcodes = defaultdict(set)
 
-    with open("local/at-postalCodes.txt") as f:
+    with open("local/allCountries.txt") as f:
         reader = csv.reader(f, delimiter='\t')
         for i, row in enumerate(reader):
             if i % 1000 == 0:
@@ -175,7 +174,22 @@ def keyword_extraction(client, args):
         print len(names)
 
         for n in names:
-            keywords.update_one({'_id': n}, {'geonames': list(names[n])}, upsert=True)
+            keywords.insert_one({'_id': n, 'geonames': list(names[n])}, upsert=True)
+
+
+def dbpedia_links_to_mongo(client, args):
+    db = client.geostore
+    geonames = db.geonames
+
+    g = rdflib.Graph()
+    g.parse('local/geonames_links_en.ttl', format="nt")
+
+    for dbp, geon in g.subject_objects(OWL.sameAs):
+        entry = geonames.find_one({'_id': geon, 'dbpedia': {'$exists': False}})
+        if entry:
+            geonames.update_one({'_id': geon}, {'$set': {'dbpedia': dbp}})
+        else:
+            logging.debug('Geonames entry not in DB: ' + str(geon))
 
 
 if __name__ == "__main__":
@@ -199,6 +213,10 @@ if __name__ == "__main__":
     # create the parser for the "postalcode" command
     subparser = subparsers.add_parser('postalcode')
     subparser.set_defaults(func=postalcode_csv_to_mongo)
+
+    # create the parser for the "dbpedia" command
+    subparser = subparsers.add_parser('dbpedia')
+    subparser.set_defaults(func=dbpedia_links_to_mongo)
 
     args = parser.parse_args()
 
