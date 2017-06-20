@@ -171,10 +171,11 @@ def keyword_extraction(client, args):
                 logging.debug('Exception for entry: ' + entry)
                 logging.debug(e)
 
+            break
         print len(names)
 
         for n in names:
-            keywords.insert_one({'_id': n, 'geonames': list(names[n])}, upsert=True)
+            keywords.insert_one({'_id': n, 'geonames': list(names[n])})
 
 
 def dbpedia_links_to_mongo(client, args):
