@@ -64,7 +64,7 @@ def postalcode_csv_to_mongo(client, args):
                     print 'AUT not in parents:', geo_id
 
 
-    with open("local/at-postalCodes.txt") as f:
+    with open("local/allCountries.txt") as f:
         reader = csv.reader(f, delimiter='\t')
         for i, row in enumerate(reader):
             if i % 1000 == 0:
@@ -77,9 +77,6 @@ def postalcode_csv_to_mongo(client, args):
             c_id = c_e['_id']
 
             l = localname.strip().lower()
-            if l == 'ebenau':
-                print localname
-
             geo_ids = set()
             add_geo_ids(l, c_id, geo_ids)
             if not geo_ids:

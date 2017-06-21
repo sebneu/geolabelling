@@ -49,7 +49,7 @@ class GeoTagger:
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
                 disamb, confidence, res_col = self.nuts_column(cols[col])
             elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
-                disamb, confidence, res_col = self.string_column(cols[col], 'postalcodes')
+                disamb, confidence, res_col = self.postalcodes_column(cols[col])
             else:
                 disamb, confidence, res_col = self.string_column(cols[col])
 

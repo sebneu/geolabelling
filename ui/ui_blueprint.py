@@ -123,17 +123,17 @@ def geotagging():
 @ui.route('/geotagging/service', methods=['GET'])
 def geotagging_service():
     url = request.args.get("url")
-    testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpdata.linz.gv.atkatalogstadtgebaeudeanzahlwohnungen2006tgeanzwg2006.csv'
+    #testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpdata.linz.gv.atkatalogstadtgebaeudeanzahlwohnungen2006tgeanzwg2006.csv'
     #testfile = '/home/neumaier/Repos/odgraph/local/testdata/hunde-wien.csv'
     #testfile = '/home/neumaier/Repos/odgraph/local/testdata/plz.csv'
-    title = testfile[-20:]
+    title = url[-20:]
 
-    with open(testfile) as f:
-        table = f.read()
+    #with open(testfile) as f:
+    #    table = f.read()
 
     geotagger = current_app.config['GEO_TAGGER']
-    data = geotagger.from_table(filename=testfile)
-    data['orig'] = decode_utf8(table)
+    data = geotagger.from_table(url=url)
+    #data['orig'] = decode_utf8(table)
     data['title'] = title
 
     return render_template("geotagging_results.jinja", data=data)
