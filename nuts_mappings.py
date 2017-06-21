@@ -1,4 +1,5 @@
 import csv
+import logging
 from collections import defaultdict
 import rdflib
 from rdflib.namespace import RDF, OWL
@@ -15,6 +16,7 @@ def at_postalcode_to_nuts3(host, port):
     client = MongoClient(host, port)
     db = client.geostore
     postalcodes = db.postalcodes
+    countries = db.countries
 
     with open('local/nuts/pc2016_at_NUTS-2010_v2.3.csv') as f:
         codes = defaultdict(set)
@@ -27,7 +29,21 @@ def at_postalcode_to_nuts3(host, port):
             codes[code].add(nuts3)
 
     for c in codes:
-        postalcodes.update_one({'_id': c}, {'$set': {'nuts3': list(codes[c])} }, upsert=True)
+        entry = postalcodes.find_one({'_id': c})
+        if not entry:
+            print('Postal code not in DB: ' + str(c))
+            continue
+        for n in codes[c]:
+            country_code = n[:2]
+            if country_code == 'UK':
+                country_code = 'GB'
+            country = countries.find_one({'iso': country_code})
+            for cntr in entry['countries']:
+                if cntr['country'] == country['_id']:
+                    if 'nuts3' not in c:
+                        cntr['nuts3'] = []
+                    cntr['nuts3'].append(n)
+        postalcodes.update({'_id': entry['_id']}, entry)
 
 
 def add_lau_to_keywords(host, port):
@@ -106,6 +122,6 @@ if __name__ == '__main__':
     #import sys
     #sys.setrecursionlimit(5000)
     #rdfnuts_to_geonames('localhost', 27017)
-    #at_postalcode_to_nuts3('localhost', 27017)
+    at_postalcode_to_nuts3('localhost', 27017)
 
-    add_lau_to_keywords('localhost', 27017)
+    #add_lau_to_keywords('localhost', 27017)

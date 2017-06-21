@@ -20,7 +20,7 @@ class GeoTagger:
         self.nuts = db.nuts
         self.postalcodes = db.postalcodes
 
-    def from_table(self, filename=None, url=None, min_matches=0.8, sample_size=100):
+    def from_table(self, filename=None, url=None, min_matches=0.6, sample_size=300):
         if not filename and not url:
             return None
 
@@ -58,8 +58,69 @@ class GeoTagger:
                 result[col] = res_col
         return {'disambiguation': disambiguation, 'sample': sample, 'cols': num_cols, 'rows': i, 'tagging': result}
 
-    def string_column(self, values, collection='keywords'):
-        disambiguated_col, confidence = self.disambiguate_values(values, collection)
+
+    def from_dt(self, dt, min_matches=0.6):
+        #cols = [[] for _ in range(dt['no_columns'])]
+        col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
+
+        for i, row in enumerate(dt['row']):
+            for k, c in enumerate(row['values']['exact']):
+                if NUTS_PATTERN.match(c):
+                    col_types[k]['NUTS'] += 1
+                elif POSTAL_PATTERN.match(c):
+                    col_types[k]['POSTAL'] += 1
+                #cols[k].append(c.strip())
+
+        for col in range(dt['no_columns']):
+            #  based on col type (90% threshold)
+            if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
+                disamb, confidence, res_col = self.nuts_column(dt['column'][col]['values']['exact'])
+            elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
+                disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'])
+            else:
+                disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'])
+
+            if confidence > min_matches:
+                dt['column'][col]['entities'] = disamb
+                for row, e in zip(dt['row'], disamb):
+                    if not 'entities' in row:
+                        row['entities'] = ['' for _ in range(dt['no_columns'])]
+                    row['entities'][col] = e
+
+
+    def postalcodes_column(self, values):
+        refs = defaultdict(dict)
+        for i, v in enumerate(values):
+            val_res = self.postalcodes.find_one({'_id': v})
+            if val_res:
+                if 'countries' in val_res:
+                    for c in val_res['countries']:
+                        country = c['country']
+                        reg = c.get('region')
+                        if reg:
+                            refs[country][i] = reg
+        #    else:
+        #        refs['empty'][i] = ''
+
+        max_c = 0
+        selected_country = None
+        for c in refs:
+            if len(refs[c]) > max_c:
+                max_c = len(refs[c])
+                selected_country = c
+        result = []
+        for i in range(len(values)):
+            result.append(refs[selected_country].get(i, ''))
+
+        confidence = float(max_c)/len(values) if len(values) > 0 else 0.
+        aggr = self.column_tagger(result)
+        return result, confidence, aggr
+
+
+
+
+    def string_column(self, values):
+        disambiguated_col, confidence = self.disambiguate_values(values)
         aggr = self.column_tagger(disambiguated_col)
         return disambiguated_col, confidence, aggr
 
@@ -96,9 +157,9 @@ class GeoTagger:
         return refs, confidence, None
 
 
-    def disambiguate_value(self, value, context_parents, collection):
+    def disambiguate_value(self, value, context_parents):
         v = value.strip().lower()
-        val_res = self.__dict__[collection].find_one({'_id': v})
+        val_res = self.keywords.find_one({'_id': v})
         if not val_res:
             return None
 
@@ -114,13 +175,13 @@ class GeoTagger:
         return None
 
 
-    def disambiguate_values(self, values, collection):
-        context_parents = self.get_parent_dict(values, collection)
+    def disambiguate_values(self, values):
+        context_parents = self.get_parent_dict(values)
         match = 0.
         # disambiguate values
         disambiguated = []
         for v in values:
-            id = self.disambiguate_value(v, context_parents, collection)
+            id = self.disambiguate_value(v, context_parents)
             if id:
                 match += 1
                 disambiguated.append(id)
@@ -131,11 +192,11 @@ class GeoTagger:
         return disambiguated, confidence
 
 
-    def get_parent_dict(self, values, collection):
+    def get_parent_dict(self, values):
         context_parents = defaultdict(int)
         for value in values:
             v = value.strip().lower()
-            res = self.__dict__[collection].find_one({'_id': v})
+            res = self.keywords.find_one({'_id': v})
             if res and 'geonames' in res:
                 for n in res['geonames']:
                     for p in self.get_all_parents(n):

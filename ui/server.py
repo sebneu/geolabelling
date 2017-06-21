@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from flask import render_template, Flask, Blueprint, jsonify, request
+from flask import render_template, Flask, Blueprint, jsonify, request, url_for
 
 import geo_tagger
+from ui import search_apis
 from ui.utils import utils
 from utils.error_handler import ErrorHandler as eh, ErrorHandler
 
@@ -104,9 +105,9 @@ def start():
     log.info('Starting CSVEngine on http://localhost:{}/'.format(port))
 
     app.config['MAX_CONTENT_LENGTH'] = maxFileSize
-    #app.config['navigation_bar'] = parseServices()
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
-
+    app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
+    app.config['ELASTICSEARCH'] = search_apis.ESClient()
 
     blueprint = Blueprint('api', __name__, url_prefix='/csvengine/api/v1')
     api.init_app(blueprint)
@@ -116,6 +117,7 @@ def start():
 
     app.wsgi_app = ReverseProxied(app.wsgi_app)
     tr = WSGIContainer(app)
+
 
     app.run(debug=True, port=port,host='0.0.0.0')
 

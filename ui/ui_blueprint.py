@@ -1,7 +1,9 @@
 from urlparse import urlparse
 
 import jinja2
-from flask import Blueprint, current_app, render_template, request, redirect, url_for
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, jsonify
+from geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
+from ui import search_apis
 
 ui = Blueprint('ui', __name__,
                template_folder='./templates',
@@ -42,7 +44,6 @@ def decode_utf8(string):
     return unicode(string, 'utf-8')
 
 
-
 @ui.route('/', methods=['GET'])
 def index():
     return render('index.jinja')
@@ -56,9 +57,62 @@ def try_page(var):
         return 1
 
 
+@ui.route('/searchapi', methods=['GET'])
+def searchapi():
+    q = request.args.get("q")
+    if not q:
+        resp = jsonify({'error': 'no keyword supplied. Use argument q'})
+        # resp.status_code = 404
+        return resp
+
+    locationsearch = current_app.config['LOCATION_SEARCH']
+    search_api = url_for('.search')
+    results = locationsearch.get_by_substring(q, search_api)
+    resp = {
+      "results": {
+        "locations": {
+          "name": "Locations",
+          "results": results
+        }
+      }
+    }
+
+    if POSTAL_PATTERN.match(q):
+        postalcodes = locationsearch.get_postalcodes(q, search_api)
+        resp["results"]["postalcodes"] = {
+            "name": "Postal codes",
+            "results": postalcodes
+        }
+
+    if NUTS_PATTERN.match(q):
+        nuts = locationsearch.get_nuts(q, search_api)
+        resp["results"]["nutscodes"] = {
+            "name": "NUTS codes",
+            "results": nuts
+        }
+
+    resp = jsonify(resp)
+    return resp
+
+
 @ui.route('/search', methods=['GET'])
 def search():
-    return render('index.jinja', data=None)
+    l = request.args.get("l")
+    q = request.args.get("q")
+    data = {'total': 0, 'results': []}
+    es_search = current_app.config['ELASTICSEARCH']
+    if q:
+        data['keyword'] = q
+    if l:
+        res = es_search.searchEntity(l)
+        # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
+        data['total'] += res['hits']['total']
+        data['results'] += search_apis.format_results(res)
+    elif q:
+        text_res = es_search.searchText(q)
+        data['total'] += text_res['hits']['total']
+        data['results'] += search_apis.format_results(text_res)
+    return render('index.jinja', data)
 
 
 @ui.route('/geotagging', methods=['GET'])
@@ -69,8 +123,8 @@ def geotagging():
 @ui.route('/geotagging/service', methods=['GET'])
 def geotagging_service():
     url = request.args.get("url")
-    #testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpdata.linz.gv.atkatalogstadtgebaeudeanzahlwohnungen2006tgeanzwg2006.csv'
-    testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpservice.stmk.gv.atogdOGDDataABT17statistikSTMK01012015SEX2015.csv'
+    testfile = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpdata.linz.gv.atkatalogstadtgebaeudeanzahlwohnungen2006tgeanzwg2006.csv'
+    #testfile = '/home/neumaier/Repos/odgraph/local/testdata/hunde-wien.csv'
     #testfile = '/home/neumaier/Repos/odgraph/local/testdata/plz.csv'
     title = testfile[-20:]
 
@@ -129,7 +183,8 @@ def store_file(file, url, textUpload):
 @ui.route('/get/geotagging', methods=['GET', 'POST'])
 def get_geotagging_file():
     #filename = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpckan.data.ktn.gv.atstoragef20130920T093A193A35.720Zlandtagswahlen2013.csv'
-    filename = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpservice.stmk.gv.atogdOGDDataABT17statistikSTMK01012015SEX2015.csv'
-    with open(filename) as f:
-        table = f.read()
-    return table
+    #filename = '/home/neumaier/Repos/odgraph/local/testdata/data_gv_at/httpservice.stmk.gv.atogdOGDDataABT17statistikSTMK01012015SEX2015.csv'
+    #with open(filename) as f:
+    #    table = f.read()
+    #return table
+    return None
