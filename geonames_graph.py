@@ -60,8 +60,6 @@ def postalcode_csv_to_mongo(client, args):
                     parent_names = get_all_parents(client, geo_id)
                     if town in parent_names and (district in parent_names or state in parent_names):
                         result.add(geo_id)
-                else:
-                    print 'AUT not in parents:', geo_id
 
 
     with open("local/allCountries.txt") as f:
@@ -132,10 +130,11 @@ def get_lowest_common_ancestor(client, geonames_ids):
 
 def _get_all_parents(geo_id, geonames_collection, all_names):
     current = geonames_collection.find_one({"_id": geo_id})
-    if current and "parent" in current:
+    if current:
         if "name" in current:
             all_names.append(current["name"])
-        _get_all_parents(current["parent"], geonames_collection, all_names)
+        if "parent" in current and current["parent"] != geo_id:
+            _get_all_parents(current["parent"], geonames_collection, all_names)
 
 
 def get_all_parents(client, geo_id):
@@ -148,9 +147,10 @@ def get_all_parents(client, geo_id):
 
 def _get_all_parent_ids(geo_id, geonames_collection, all_ids):
     current = geonames_collection.find_one({"_id": geo_id})
-    if current and "parent" in current and current["parent"] != geo_id:
+    if current and current["_id"] not in all_ids:
         all_ids.append(current["_id"])
-        _get_all_parent_ids(current["parent"], geonames_collection, all_ids)
+        if "parent" in current and current["parent"] != geo_id:
+            _get_all_parent_ids(current["parent"], geonames_collection, all_ids)
 
 
 def get_all_parent_ids(client, geo_id):
