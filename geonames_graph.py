@@ -148,7 +148,7 @@ def get_all_parents(client, geo_id):
 
 def _get_all_parent_ids(geo_id, geonames_collection, all_ids):
     current = geonames_collection.find_one({"_id": geo_id})
-    if current and "parent" in current:
+    if current and "parent" in current and current["parent"] != geo_id:
         all_ids.append(current["_id"])
         _get_all_parent_ids(current["parent"], geonames_collection, all_ids)
 
