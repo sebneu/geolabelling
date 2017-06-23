@@ -95,12 +95,16 @@ def postalcode_csv_to_mongo(client, args):
 
                 if not geo_ids:
                     logging.debug("Local name not in keywords: " + l)
+                    # TODO go to wikidata and look for entity of this postalcode
             # add geonames ids for current country and postalcode
             if geo_ids:
                 postalcodes[postalcode][c_id] = geo_ids
 
+
         for c in postalcodes:
-            entry = {'_id': c, 'countries': []}
+            entry = postalcodes.find_one({'_id': c})
+            if not entry:
+                entry = {'_id': c, 'countries': []}
             for country_id in postalcodes[c]:
                 geonames_ids = list(postalcodes[c][country_id])
                 tmp = {'country': country_id, 'geonames': geonames_ids}
@@ -109,6 +113,46 @@ def postalcode_csv_to_mongo(client, args):
                     tmp['region'] = region
                 entry['countries'].append(tmp)
             postalcodes_collection.insert(entry)
+
+
+def wikidata_postalcodes_to_geonames(client, args):
+    db = client.geostore
+    postalcodes = db.postalcodes
+
+    s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+    statement = '''
+    SELECT ?o ?g ?country_id WHERE {
+      ?s wdt:P281 ?o.
+      ?s wdt:P1566 ?g.
+      ?s wdt:P17 ?country.
+      ?country wdt:P1566 ?country_id
+    }
+    '''
+    result = s.query(statement)
+    for row in result.fetchone():
+        postalcode = row[0].value.strip()
+        geon = 'http://sws.geonames.org/' + row[1].value + '/'
+        geon_country = 'http://sws.geonames.org/' + row[2].value + '/'
+
+        entry = postalcodes.find_one({'_id': postalcode})
+        if not entry:
+            entry = {'_id': postalcode, 'countries': []}
+
+        country_found = None
+        for c in entry['countries']:
+            if c['country'] == geon_country:
+                country_found = c
+                break
+
+        if not country_found:
+            country_found = {'country': geon_country, 'region': geon}
+            entry['countries'].append(country_found)
+
+        if not 'geonames' in country_found:
+            country_found['geonames'] = []
+        if geon not in country_found['geonames']:
+            country_found['geonames'].append(geon)
+        postalcodes.update(entry, upsert=True)
 
 
 def get_lowest_common_ancestor(client, geonames_ids):
@@ -259,6 +303,28 @@ def dbpedia_links_to_mongo(client, args):
             logging.debug('Geonames entry not in DB: ' + str(geon))
 
 
+def wikidata_nuts_to_geonames(client, args):
+    db = client.geostore
+    nuts = db.nuts
+
+    s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+    statement = '''
+    SELECT ?o ?g WHERE {
+      ?s wdt:P605 ?o.
+      ?s wdt:P1566 ?g
+    }
+    '''
+    result = s.query(statement)
+    for row in result.fetchone():
+        nuts_code = row[0].value.strip()
+        geon = 'http://sws.geonames.org/' + row[1].value + '/'
+
+        entry = nuts.find_one({'_id': nuts_code})
+        if entry:
+            nuts.update_one({'_id': nuts_code}, {'$set': {'geonames': geon}})
+        else:
+            logging.debug('NUTS entry not in DB: ' + str(nuts_code))
+
 
 def wikidata_links_to_mongo(client, args):
     db = client.geostore
@@ -285,7 +351,7 @@ def wikidata_links_to_mongo(client, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='geo-store')
     parser.add_argument('--host', default='localhost')
-    parser.add_argument('--port', type=int, default=27017)
+    parser.add_argument('--port', type=int, default=27018)
     filename = datetime.now().strftime('%Y-%m-%d') + '.log'
     parser.add_argument('--logfile', default=filename)
     parser.add_argument('--loglevel', type=str, default='debug')
@@ -306,6 +372,12 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('wikidata')
     subparser.set_defaults(func=wikidata_links_to_mongo)
+
+    subparser = subparsers.add_parser('wikidata-nuts')
+    subparser.set_defaults(func=wikidata_nuts_to_geonames)
+
+    subparser = subparsers.add_parser('wikidata-postalcodes')
+    subparser.set_defaults(func=wikidata_postalcodes_to_geonames)
 
     subparser = subparsers.add_parser('countries')
     subparser.set_defaults(func=countries_to_mongo)

@@ -1,6 +1,7 @@
 import json
 
 import yaml
+import pymongo
 from pymongo import MongoClient
 import urllib
 from elasticsearch import Elasticsearch
@@ -15,9 +16,27 @@ class LocationSearch:
         self.geonames = db.geonames
         self.nuts = db.nuts
 
+    def get_postalcode_mappings_by_country(self, code, country_code):
+        results = []
+        country = self.countries.find_one({'iso': country_code})
+        if country:
+            pc = self.postalcodes.find_one({'_id': code})
+            if pc:
+                for c in pc['countries']:
+                    if c['country'] == country['_id'] and 'geonames' in c:
+                        results += c['geonames']
+                        break
+        return results
+
     def get_by_substring(self, q, search_api, limit=10):
         results = []
-        for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
+        #for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
+
+        cursor = self.geonames.find({'$text': { '$search': q }}, {'score': {'$meta': "textScore" }})
+        cursor.sort([('score', {'$meta': 'textScore'})])
+        cursor.limit(limit)
+
+        for res in cursor:
             tmp = {
                 'title': res['name'],
                 'url': search_api + '?' + urllib.urlencode({'q': res['name'].encode('utf-8'), 'l': res['_id']})
@@ -44,22 +63,30 @@ class LocationSearch:
                     c = self.countries.find_one({'_id': country['country']})
                     if 'name' in c:
                         tmp['price'] = c['name']
+                        tmp['url'] = search_api + '?' + urllib.urlencode(
+                            {'q': res['_id'].encode('utf-8'), 'p': c['iso'] + '#' + res['_id']})
                     if 'region' in country:
-                        c = self.geonames.find_one({'_id': country['region']})
-                        if c and 'name' in c:
-                            tmp['description'] = c['name']
-                            tmp['url'] = search_api + '?' + urllib.urlencode(
-                                {'q': c['name'].encode('utf-8'), 'l': c['_id']})
+                        region = self.geonames.find_one({'_id': country['region']})
+                        if region and 'name' in region:
+                            tmp['description'] = region['name']
                     results.append(tmp)
         return results
 
     def get_nuts(self, q, search_api, limit=5):
         results = []
         for res in self.nuts.find({'_id': {'$regex': '^' + q}}).limit(limit):
+            resp = {'q': res['name'].encode('utf-8')}
+            if 'geonames' in res:
+                resp['l'] = res['geonames']
+            elif 'dbpedia' in res:
+                resp['l'] = res['dbpedia']
+            else:
+                resp['l'] = res['geovocab']
+
             tmp = {
                 'title': res['_id'],
                 'description': res['name'],
-                'url': search_api + '?' + urllib.urlencode({'q': res['name'].encode('utf-8'), 'l': res['geovocab']})
+                'url': search_api + '?' + urllib.urlencode(resp)
             }
             country_code = res['_id'][:2]
             if country_code == 'UK':
@@ -97,6 +124,27 @@ class ESClient(object):
                             "filter": {
                                 "term": {
                                     "row.entities": entity
+                                }
+                            }
+                        }
+                    },
+                    "inner_hits": {}
+                }
+            }
+        }
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+
+    def searchEntities(self, entities, limit=10, offset=0):
+        q = {
+            "_source": ["url", "column.headers.exact", "portal.*"],
+            "query": {
+                "nested": {
+                    "path": "row",
+                    "query": {
+                        "constant_score": {
+                            "filter": {
+                                "terms": {
+                                    "row.entities": entities
                                 }
                             }
                         }

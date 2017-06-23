@@ -5,6 +5,8 @@ import rdflib
 from rdflib.namespace import RDF, OWL
 from rdflib import Namespace
 
+import geonames_graph
+
 RAMON = Namespace("http://rdfdata.eionet.europa.eu/ramon/ontology/")
 NUTS = Namespace("http://nuts.geovocab.org/id/")
 SPATIAL = Namespace("http://geovocab.org/spatial#")
@@ -69,11 +71,12 @@ def add_lau_to_keywords(host, port):
             keywords.update_one({'_id': name}, {'$set': {'lau_code': code}}, upsert=True)
 
 
-
 def rdfnuts_to_geonames(host, port):
     client = MongoClient(host, port)
     db = client.geostore
     nuts = db.nuts
+    countries = db.countries
+    keywords = db.keywords
 
     g = rdflib.Graph()
     g.parse("/home/neumaier/Repos/odgraph/local/nuts/nuts-rdf-0.91.ttl", format='ttl')
@@ -115,13 +118,24 @@ def rdfnuts_to_geonames(host, port):
         if geonames:
             data['geonames'] = geonames
 
+        # get geonames country
+        country_code = code[:2]
+        if country_code == 'UK':
+            country_code = 'GB'
+        c = countries.find_one({'iso': country_code})
+        if c:
+            data['country'] = c['_id']
+        else:
+            print 'COUNTRY NOT FOUND', country_code
+
         nuts.insert(data)
 
 
+
 if __name__ == '__main__':
-    #import sys
-    #sys.setrecursionlimit(5000)
-    #rdfnuts_to_geonames('localhost', 27017)
-    at_postalcode_to_nuts3('localhost', 27017)
+    import sys
+    sys.setrecursionlimit(5000)
+    rdfnuts_to_geonames('localhost', 27018)
+    #at_postalcode_to_nuts3('localhost', 27017)
 
     #add_lau_to_keywords('localhost', 27017)

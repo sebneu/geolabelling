@@ -25,11 +25,11 @@
                             <div class="one wide column">
                               <div class="ui list">
                                   <div class="item">
-                                    <button class="primary circular ui icon button clean" >
+                                    <button class="primary circular ui icon button preview" >
                                         <i class="table icon"></i>
                                     </button>
                                   </div>
-                                  <div class="item">
+                                  <!--<div class="item">
                                     <button class="primary circular ui icon button profile" >
                                         <i class="bar chart icon"></i>
                                     </button>
@@ -38,7 +38,7 @@
                                     <button class="primary circular ui icon button" >
                                         <i class="info icon"></i>
                                     </button>
-                                  </div>
+                                  </div>-->
                               </div>
                             </div>
                             <div class="fifteen wide column">
@@ -111,6 +111,20 @@
     {% endif %}
 </div>
 
+<div class="ui modal">
+  <i class="close icon"></i>
+  <div class="header">
+    Modal Title
+  </div>
+  <div class="content">
+    <div class="description">
+      A description can appear on the right
+    </div>
+  </div>
+  <div class="actions">
+    <div class="ui button">OK</div>
+  </div>
+</div>
 </div>
 {% endblock %}
 
@@ -125,11 +139,13 @@
       })
     ;
 
-    $(".clean").click(function() {
-       url = $(this).closest('.ui .grid');
-       var urlval = url.find('div.header').children().text();
-       a = "{{ url_for('ui.geotagging_service')}}"
-       window.location.href=a+"?url="+urlval
+    $(".preview").click(function() {
+        url = $(this).closest('.ui .grid');
+        var urlval = url.find('div.header').children().text();
+        console.log("test")
+        $('.ui.modal')
+          .modal('show')
+        ;
     });
 
     $(".pagination .item").click(function(){

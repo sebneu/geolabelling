@@ -98,14 +98,22 @@ def searchapi():
 @ui.route('/search', methods=['GET'])
 def search():
     l = request.args.get("l")
+    p = request.args.get("p")
     q = request.args.get("q")
     data = {'total': 0, 'results': []}
     es_search = current_app.config['ELASTICSEARCH']
+    locationsearch = current_app.config['LOCATION_SEARCH']
     if q:
         data['keyword'] = q
     if l:
         res = es_search.searchEntity(l)
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
+        data['total'] += res['hits']['total']
+        data['results'] += search_apis.format_results(res)
+    elif p:
+        country, code = p.split('#')
+        entities = locationsearch.get_postalcode_mappings_by_country(code, country)
+        res = es_search.searchEntities(entities)
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res)
     elif q:
