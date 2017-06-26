@@ -17,6 +17,32 @@
         </div>
 
         {% if "results" in data %}
+            {% if "entity" in data %}
+            <div class="ui horizontal segments">
+                <div class="ui segment">
+                    <div class="ui big breadcrumb">
+                        {% for p in data.entity.parents %}
+                            <a class="section" href="{{ p.link }}">{{p.name}}</a>
+                            <i class="right chevron icon divider"></i>
+                        {% endfor %}
+                      <div class="active section">{{data.entity.name}}</div>
+                    </div>
+                    <div class="ui right floated large buttons">
+                      <button class="ui active primary button">Spatial entity</button>
+                      <div class="or"></div>
+                      <button class="ui button" id="fulltext">Full-text results</button>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="ui horizontal segments">
+                <div class="ui center aligned segment">
+                    <div class="ui right aligned large buttons">
+                      <button class="ui active primary disabled button">Full-text results</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% if data.results|length > 0 %}
                 <div class="ui relaxed divided list">
                     {% for r in data.results %}
@@ -111,18 +137,11 @@
     {% endif %}
 </div>
 
-<div class="ui modal">
+<div class="ui large modal">
   <i class="close icon"></i>
-  <div class="header">
-    Modal Title
+  <div class="header" id="table_header">
   </div>
-  <div class="content">
-    <div class="description">
-      A description can appear on the right
-    </div>
-  </div>
-  <div class="actions">
-    <div class="ui button">OK</div>
+  <div class="content" id="table_preview" style="height:400px;">
   </div>
 </div>
 </div>
@@ -142,10 +161,21 @@
     $(".preview").click(function() {
         url = $(this).closest('.ui .grid');
         var urlval = url.find('div.header').children().text();
-        console.log("test")
-        $('.ui.modal')
+        $(table_header).text('Loading...')
+        $(table_preview).html('<div class="ui loading segment" style="height:100%;width=100%"/>')
+        loadTablePreview(urlval)
+        $('.large.modal')
           .modal('show')
         ;
+    });
+
+    $("#fulltext").click(function() {
+        var input = "{{data.keyword}}";
+        a = "{{ url_for('ui.search')}}"
+        if(input.length > 0){
+        a+="?q="+input
+            window.location.href=a
+        }
     });
 
     $(".pagination .item").click(function(){
@@ -168,5 +198,17 @@
             }
          }
      });
+
+    function loadTablePreview(tableid) {
+        $.get("{{ url_for('ui.preview') }}", {
+            tableid: tableid
+        }).done(function(table) {
+            $(table_preview).empty()
+            $(table_preview).append(table['data'])
+            $(table_header).text(table['url'])
+        }).fail(function() {
+            $(table_preview).text("Error: Could not contact server.");
+        });
+    }
 
 {% endblock %}

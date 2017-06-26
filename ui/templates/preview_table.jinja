@@ -1,0 +1,30 @@
+{% if table %}
+<div class="table tablewrapper" style="overflow-y:scroll;max-width:100%;max-height:100%;">
+    <table class="ui fixed table">
+        {% if table.headers %}
+        <thead>
+            <tr>
+            {% for header in table.headers %}
+                <th>{{header}}</th>
+            {% endfor %}
+            </tr>
+        </thead>
+        {% endif %}
+        <tbody>
+            {% for row in table.rows %}
+            <tr>
+                {% for entry in row %}
+                    {% if entry.entity %}
+                        <td class="selectable positive">
+                            <a href="{{entry.entity}}" target="_blank">{{entry.value}}</a>
+                        </td>
+                    {% else %}
+                        <td>{{entry.value}}</td>
+                   {% endif  %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}

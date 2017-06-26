@@ -1,3 +1,4 @@
+import urllib
 from urlparse import urlparse
 
 import jinja2
@@ -110,17 +111,39 @@ def search():
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res)
+        # entity information
+        data['entity'] = {'name': q}
+        parents = []
+        search_api = url_for('.search')
+        for name, p_l in locationsearch.get_parents(l):
+            link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
+            parents.append({'name': name, 'link': link})
+        data['entity']['parents'] = parents
     elif p:
-        country, code = p.split('#')
+        country_code, code = p.split('#')
+        country = locationsearch.get_country(country_code)
         entities = locationsearch.get_postalcode_mappings_by_country(code, country)
         res = es_search.searchEntities(entities)
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res)
+        # entity information
+        search_api = url_for('.search')
+        link = search_api + '?' + urllib.urlencode({'q': country['name'].encode('utf-8'), 'l': country['_id']})
+        data['entity'] = {'name': code, 'parents': [{'name': country['name'], 'link': link}]}
     elif q:
         text_res = es_search.searchText(q)
         data['total'] += text_res['hits']['total']
         data['results'] += search_apis.format_results(text_res)
     return render('index.jinja', data)
+
+
+@ui.route('/preview', methods=['GET'])
+def preview():
+    url = request.args.get("tableid")
+    es_search = current_app.config['ELASTICSEARCH']
+    doc = es_search.get(url, columns=False)
+    res = search_apis.format_table(doc)
+    return jsonify({'data': render_template('preview_table.jinja', table=res), 'url': res['url'], 'portal': res['portal']})
 
 
 @ui.route('/geotagging', methods=['GET'])

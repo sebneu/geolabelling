@@ -16,9 +16,8 @@ class LocationSearch:
         self.geonames = db.geonames
         self.nuts = db.nuts
 
-    def get_postalcode_mappings_by_country(self, code, country_code):
+    def get_postalcode_mappings_by_country(self, code, country):
         results = []
-        country = self.countries.find_one({'iso': country_code})
         if country:
             pc = self.postalcodes.find_one({'_id': code})
             if pc:
@@ -97,6 +96,21 @@ class LocationSearch:
             results.append(tmp)
         return results
 
+    def get_country(self, iso):
+        country = self.countries.find_one({'iso': iso})
+        return country
+
+    def get_parents(self, id, parents=None):
+        current = self.geonames.find_one({"_id": id})
+        if parents is None:
+            parents = []
+        else:
+            if current and "name" in current:
+                parents.insert(0, (current["name"], current['_id']))
+        if current and "parent" in current and current["parent"] != id:
+            self.get_parents(current["parent"], parents)
+        return parents
+
 
 class ESClient(object):
     def __init__(self, indexName='autcsv', config=None):
@@ -112,6 +126,16 @@ class ESClient(object):
         else:
             self.es = Elasticsearch()
             self.indexName = indexName
+
+    def get(self, url, columns=True, rows=True):
+        include = ['column.headers.exact', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url']
+        exclude = []
+        if columns:
+            include.append("column.*")
+        if not rows:
+            exclude.append("row.*")
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
+        return res
 
     def searchEntity(self, entity, limit=10, offset=0):
         q = {
@@ -180,7 +204,14 @@ class ESClient(object):
 
 
 MAX_STRING_LENGTH = 20
-
+def _get_doc_headers(doc):
+    headers = []
+    if 'column' in doc['_source']:
+        for h in doc['_source']['column']:
+            if 'headers' in h:
+                v = h['headers'][0]['exact'][0]
+                headers.append(v if len(v) < MAX_STRING_LENGTH else v[:MAX_STRING_LENGTH] + '...')
+    return headers
 
 def format_results(results):
     """Print results nicely:
@@ -188,17 +219,34 @@ def format_results(results):
     """
     data = []
     for doc in results['hits']['hits']:
-        d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], "headers": []}
-        if 'column' in doc['_source']:
-            for h in doc['_source']['column']:
-                if 'headers' in h:
-                    v = h['headers'][0]['exact'][0]
-                    d["headers"].append(v if len(v) < MAX_STRING_LENGTH else v[:MAX_STRING_LENGTH] + '...')
+        d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri']}
+        d["headers"] = _get_doc_headers(doc)
 
         if 'row' in doc['inner_hits']:
             d['row'] = [c if len(c) < MAX_STRING_LENGTH else c[:MAX_STRING_LENGTH] + '...' for c in
                         doc['inner_hits']['row']['hits']['hits'][0]['_source']['values']['exact']]
+            d['row_no'] = doc['inner_hits']['row']['hits']['hits'][0]['_source']['row_no']
             if 'entities' in doc['inner_hits']['row']['hits']['hits'][0]['_source']:
                 d['entities'] = doc['inner_hits']['row']['hits']['hits'][0]['_source']['entities']
         data.append(d)
     return data
+
+
+def format_table(doc, max_rows=500):
+    d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
+    d['headers'] = _get_doc_headers(doc)
+    if 'row' in doc['_source']:
+        rows = doc['_source']['row']
+        for row_no, row in enumerate(rows):
+            d_row = []
+            for i, e in enumerate([c if len(c) < MAX_STRING_LENGTH else c[:MAX_STRING_LENGTH] + '...'
+                              for c in row['values']['exact']]):
+                entry = {'value': e}
+
+                if 'entities' in row:
+                    entry['entity'] = row['entities'][i]
+                d_row.append(entry)
+            d['rows'].append(d_row)
+            if row_no > max_rows:
+                break
+    return d
