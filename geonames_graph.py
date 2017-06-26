@@ -152,7 +152,7 @@ def wikidata_postalcodes_to_geonames(client, args):
             country_found['geonames'] = []
         if geon not in country_found['geonames']:
             country_found['geonames'].append(geon)
-        postalcodes.update(entry, upsert=True)
+        postalcodes.update_one({'_id': entry['_id']}, entry, upsert=True)
 
 
 def get_lowest_common_ancestor(client, geonames_ids):
@@ -351,7 +351,7 @@ def wikidata_links_to_mongo(client, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='geo-store')
     parser.add_argument('--host', default='localhost')
-    parser.add_argument('--port', type=int, default=27018)
+    parser.add_argument('--port', type=int, default=27017)
     filename = datetime.now().strftime('%Y-%m-%d') + '.log'
     parser.add_argument('--logfile', default=filename)
     parser.add_argument('--loglevel', type=str, default='debug')
