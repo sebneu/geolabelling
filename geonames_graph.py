@@ -152,7 +152,7 @@ def wikidata_postalcodes_to_geonames(client, args):
             country_found['geonames'] = []
         if geon not in country_found['geonames']:
             country_found['geonames'].append(geon)
-        postalcodes.update_one({'_id': entry['_id']}, entry, upsert=True)
+        postalcodes.update_one({'_id': entry['_id']}, {'$set': {'countries': entry['countries']}}, upsert=True)
 
 
 def get_lowest_common_ancestor(client, geonames_ids):
