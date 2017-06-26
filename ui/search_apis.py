@@ -111,6 +111,17 @@ class LocationSearch:
             self.get_parents(current["parent"], parents)
         return parents
 
+    def get_external_links(self, id):
+        current = self.geonames.find_one({"_id": id})
+        external = []
+        if 'dbpedia' in current:
+            external.append({'name': 'DBpedia', 'link': current['dbpedia']})
+        if 'wikidata' in current:
+            external.append({'name': 'Wikidata', 'link': current['wikidata']})
+        if 'geovocab' in current:
+            external.append({'name': 'GeoVocab.org', 'link': current['geovocab']})
+        return external
+
 
 class ESClient(object):
     def __init__(self, indexName='autcsv', config=None):

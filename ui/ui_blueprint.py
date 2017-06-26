@@ -112,12 +112,13 @@ def search():
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res)
         # entity information
-        data['entity'] = {'name': q}
+        data['entity'] = {'name': q, 'link': l}
+        data['entity']['external'] = locationsearch.get_external_links(l)
         parents = []
         search_api = url_for('.search')
         for name, p_l in locationsearch.get_parents(l):
             link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
-            parents.append({'name': name, 'link': link})
+            parents.append({'name': name, 'link': p_l, 'search': link})
         data['entity']['parents'] = parents
     elif p:
         country_code, code = p.split('#')
@@ -129,7 +130,7 @@ def search():
         # entity information
         search_api = url_for('.search')
         link = search_api + '?' + urllib.urlencode({'q': country['name'].encode('utf-8'), 'l': country['_id']})
-        data['entity'] = {'name': code, 'parents': [{'name': country['name'], 'link': link}]}
+        data['entity'] = {'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]}
     elif q:
         text_res = es_search.searchText(q)
         data['total'] += text_res['hits']['total']
