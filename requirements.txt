@@ -1,0 +1,6 @@
+https://github.com/sebneu/anycsv/tarball/master#egg=anycsv
+cchardet
+flask
+rdflib
+sparql-client
+pymongo
