@@ -124,13 +124,11 @@ class LocationSearch:
 
 
 class ESClient(object):
-    def __init__(self, indexName='autcsv', config=None):
-        if config:
-            with open(config) as f_conf:
-                conf = yaml.load(f_conf)
-                host = {'host': conf['es']['host'], 'port': conf['es']['port']}
-                if 'url_prefix' in conf['es']:
-                    host['url_prefix'] = conf['es']['url_prefix']
+    def __init__(self, indexName='autcsv', conf=None):
+        if conf:
+            host = {'host': conf['es']['host'], 'port': conf['es']['port']}
+            if 'url_prefix' in conf['es']:
+                host['url_prefix'] = conf['es']['url_prefix']
 
             self.es = Elasticsearch(hosts=[host])
             self.indexName = conf['es']['indexName']
