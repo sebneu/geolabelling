@@ -38,7 +38,7 @@ def load_config(confFile):
                 if key in conf:
                     for k, v in config[key].items():
                         if key!='ui':
-                            if len(conf[key].get(k,''))>0:
+                            if len(str(conf[key].get(k,''))) > 0:
                                 config[key][k] = conf[key].get(k,v)
             for key in conf:
                 if key not in config:
