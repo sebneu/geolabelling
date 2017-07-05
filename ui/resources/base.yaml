@@ -5,6 +5,11 @@ db:
     host: 'localhost'
     port: 27017
 
+es:
+    indexName: autcsv
+    host: localhost
+    port: 9200
+
 ui:
     maxFileSize: 1048576
     port: 2340

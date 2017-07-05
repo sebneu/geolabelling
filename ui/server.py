@@ -107,7 +107,7 @@ def start():
     app.config['MAX_CONTENT_LENGTH'] = maxFileSize
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
-    app.config['ELASTICSEARCH'] = search_apis.ESClient()
+    app.config['ELASTICSEARCH'] = search_apis.ESClient(config=config)
 
     blueprint = Blueprint('api', __name__, url_prefix='/csvengine/api/v1')
     api.init_app(blueprint)
