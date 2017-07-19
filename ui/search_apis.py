@@ -157,7 +157,7 @@ class ESClient(object):
 
     def searchEntity(self, entity, limit=10, offset=0):
         q = {
-            "_source": ["url", "column.header.value", "portal.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
             "query": {
                 "nested": {
                     "path": "row",
@@ -225,7 +225,7 @@ class ESClient(object):
 
     def searchEntities(self, entities, limit=10, offset=0):
         q = {
-            "_source": ["url", "column.header.value", "portal.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
             "query": {
                 "nested": {
                     "path": "row",
