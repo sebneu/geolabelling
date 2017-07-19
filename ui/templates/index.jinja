@@ -113,15 +113,22 @@
                               <div class="one wide column">
                               <div class="content">
                                 <div class="ui grid">
-                                  <div class="fifteen wide column">
+                                  <div class="twelve wide column">
+                                    {% if "dataset" in r %}
+                                    <div class="header">{{r.dataset.dataset_name}} - <a href="{{r.url}}">{{r.dataset.name}}</a></div>
+                                    <div class="description">{{r.dataset.dataset_description}}</div>
+                                    {% else %}
                                     <div class="header"><a href="{{r.url}}">{{r.url}}</a></div>
-                                    <div class="description">{{r.portal}}</div>
+                                    {% endif %}
                                   </div>
-                                  <div class="one wide column">
-                                    <button class="ui icon circular button" style="visibility:hidden"><i class="diamond icon"></i></button>
+                                  <div class="right aligned four wide column">
+                                     {% if "dataset" in r %}
+                                    <div class="header">{{r.dataset.publisher}}</div>
+                                    {% endif %}
+                                    <div class="description"><a href="{{r.portal}}">{{r.portal}}</a></div>
                                   </div>
                                 </div>
-                                {% if r.row %}
+                                {% if r.row or r.headers %}
                                     <table class="ui fixed table">
                                         {% if r.headers %}
                                         <thead>
@@ -202,7 +209,7 @@
 
     $(".preview").click(function() {
         url = $(this).closest('.ui .grid');
-        var urlval = url.find('div.header').children().text();
+        var urlval = url.find('div.header').children().attr('href');
         $(table_header).text('Loading...')
         $(table_preview).html('<div class="ui loading segment" style="height:100%;width=100%"/>')
         loadTablePreview(urlval)

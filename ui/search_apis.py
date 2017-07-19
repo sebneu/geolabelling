@@ -5,6 +5,7 @@ import pymongo
 from pymongo import MongoClient
 import urllib
 from elasticsearch import Elasticsearch
+from ui.utils import mongo_collections_utils
 
 
 class LocationSearch:
@@ -15,6 +16,15 @@ class LocationSearch:
         self.postalcodes = db.postalcodes
         self.geonames = db.geonames
         self.nuts = db.nuts
+
+    def get(self, id):
+        return self.geonames.find_one({'_id': id})
+
+    def get_nuts_by_geovocab(self, l):
+        return self.nuts.find_one({'geovocab': l})
+
+    def get_nuts_by_id(self, id):
+        return self.nuts.find_one({'_id': id})
 
     def get_postalcode_mappings_by_country(self, code, country):
         results = []
@@ -38,7 +48,7 @@ class LocationSearch:
         for res in cursor:
             tmp = {
                 'title': res['name'],
-                'url': search_api + '?' + urllib.urlencode({'q': res['name'].encode('utf-8'), 'l': res['_id']})
+                'url': search_api + '?' + urllib.urlencode({'l': res['_id']})
             }
             if 'country' in res:
                 c = self.geonames.find_one({'_id': res['country']})
@@ -63,7 +73,7 @@ class LocationSearch:
                     if 'name' in c:
                         tmp['price'] = c['name']
                         tmp['url'] = search_api + '?' + urllib.urlencode(
-                            {'q': res['_id'].encode('utf-8'), 'p': c['iso'] + '#' + res['_id']})
+                            {'p': c['iso'] + '#' + res['_id']})
                     if 'region' in country:
                         region = self.geonames.find_one({'_id': country['region']})
                         if region and 'name' in region:
@@ -74,14 +84,7 @@ class LocationSearch:
     def get_nuts(self, q, search_api, limit=5):
         results = []
         for res in self.nuts.find({'_id': {'$regex': '^' + q}}).limit(limit):
-            resp = {'q': res['name'].encode('utf-8')}
-            if 'geonames' in res:
-                resp['l'] = res['geonames']
-            elif 'dbpedia' in res:
-                resp['l'] = res['dbpedia']
-            else:
-                resp['l'] = res['geovocab']
-
+            resp = {'l': mongo_collections_utils.get_nuts_link(res)}
             tmp = {
                 'title': res['_id'],
                 'description': res['name'],
@@ -96,9 +99,11 @@ class LocationSearch:
             results.append(tmp)
         return results
 
+
     def get_country(self, iso):
         country = self.countries.find_one({'iso': iso})
         return country
+
 
     def get_parents(self, id, parents=None):
         current = self.geonames.find_one({"_id": id})
@@ -137,7 +142,7 @@ class ESClient(object):
             self.indexName = indexName
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.headers.exact', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url']
         exclude = []
         if columns:
             include.append("column.*")
@@ -146,9 +151,13 @@ class ESClient(object):
         res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
         return res
 
+    def exists(self, url):
+        res = self.es.exists(index=self.indexName, doc_type='table', id=url)
+        return res
+
     def searchEntity(self, entity, limit=10, offset=0):
         q = {
-            "_source": ["url", "column.headers.exact", "portal.*"],
+            "_source": ["url", "column.header.value", "portal.*"],
             "query": {
                 "nested": {
                     "path": "row",
@@ -167,9 +176,56 @@ class ESClient(object):
         }
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
+
+    def searchEntityAndText(self, entity, term, limit=10, offset=0, intersect=False):
+        tmp = 'should'
+        if intersect:
+            tmp = 'must'
+        q = {
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
+            "query": {
+                "bool": {
+                    tmp: [
+                        {
+                            "nested": {
+                                "path": "row",
+                                "query": {
+                                    "constant_score": {
+                                        "filter": {
+                                            "term": {
+                                                "row.entities": entity
+                                            }
+                                        }
+                                    }
+                                },
+                                "inner_hits": {},
+                                "boost": 2
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "dataset",
+                                "query": {
+                                    "multi_match": {
+                                        "query": term,
+                                        "fields": ["dataset.name", "dataset.dataset_name",
+                                                   "dataset.dataset_description", "dataset.publisher"]
+                                    }
+                                },
+                                "inner_hits": {},
+                                "boost": 0.1
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+
+
     def searchEntities(self, entities, limit=10, offset=0):
         q = {
-            "_source": ["url", "column.headers.exact", "portal.*"],
+            "_source": ["url", "column.header.value", "portal.*"],
             "query": {
                 "nested": {
                     "path": "row",
@@ -190,49 +246,95 @@ class ESClient(object):
 
     def searchText(self, term, limit=10, offset=0):
         q = {
-            "_source": ["url", "column.headers.exact", "portal.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
             "query": {
-                "nested": {
-                    "path": "row",
-                    "query": {
-                        "bool": {
-                            "must": [
-                                {
+                "bool": {
+                    "should": [
+                        {
+                            "match": {
+                                "column.header.value": term
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "column",
+                                "query": {
                                     "match": {
-                                        "row.values.value": term
+                                        "column.header.value": term
                                     }
-                                }
-                            ]
+                                },
+                                "inner_hits": {}
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "dataset",
+                                "query": {
+                                    "multi_match": {
+                                        "query": term,
+                                        "fields": ["dataset.name", "dataset.dataset_name",
+                                                   "dataset.dataset_description", "dataset.publisher"]
+                                    }
+                                },
+                                "inner_hits": {}
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "row",
+                                "query": {
+                                    "bool": {
+                                        "must": [
+                                            {
+                                                "match": {
+                                                    "row.values.value": term
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "inner_hits": {}
+                            }
                         }
-                    },
-                    "inner_hits": {}
+                    ]
                 }
             }
         }
+
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+
+    def update(self, id, fields):
+        q = {
+            "doc": fields
+        }
+        return self.es.update(index=self.indexName, doc_type='table', id=id, body=q)
 
 
 MAX_STRING_LENGTH = 20
-def _get_doc_headers(doc):
+def _get_doc_headers(doc, row_cutoff):
     headers = []
     if 'column' in doc['_source']:
         for h in doc['_source']['column']:
-            if 'headers' in h:
-                v = h['headers'][0]['exact'][0]
-                headers.append(v if len(v) < MAX_STRING_LENGTH else v[:MAX_STRING_LENGTH] + '...')
+            if 'header' in h:
+                v = h['header'][0]['value'][0]
+                headers.append(v[:MAX_STRING_LENGTH] + '...' if len(v) > MAX_STRING_LENGTH and row_cutoff else v)
     return headers
 
-def format_results(results):
+
+def format_results(results, row_cutoff):
     """Print results nicely:
     doc_id) content
     """
     data = []
     for doc in results['hits']['hits']:
         d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri']}
-        d["headers"] = _get_doc_headers(doc)
+        d["headers"] = _get_doc_headers(doc, row_cutoff)
 
-        if 'row' in doc['inner_hits']:
-            d['row'] = [c if len(c) < MAX_STRING_LENGTH else c[:MAX_STRING_LENGTH] + '...' for c in
+        if 'dataset' in doc['_source']:
+            d['dataset'] = doc['_source']['dataset']
+
+        if 'row' in doc['inner_hits'] and doc['inner_hits']['row']['hits']['total'] > 0:
+            d['row'] = [c[:MAX_STRING_LENGTH] + '...' if len(c) > MAX_STRING_LENGTH and row_cutoff else c for c in
                         doc['inner_hits']['row']['hits']['hits'][0]['_source']['values']['exact']]
             d['row_no'] = doc['inner_hits']['row']['hits']['hits'][0]['_source']['row_no']
             if 'entities' in doc['inner_hits']['row']['hits']['hits'][0]['_source']:
@@ -243,7 +345,7 @@ def format_results(results):
 
 def format_table(doc, max_rows=500):
     d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
-    d['headers'] = _get_doc_headers(doc)
+    d['headers'] = _get_doc_headers(doc, row_cutoff=False)
     if 'row' in doc['_source']:
         rows = doc['_source']['row']
         for row_no, row in enumerate(rows):
