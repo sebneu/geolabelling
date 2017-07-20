@@ -59,6 +59,17 @@ def try_page(var):
         return 1
 
 
+@ui.route('/get/<path:url>', methods=['GET'])
+def gettable(url):
+    columns = request.args.get("columns")
+    es_search = current_app.config['ELASTICSEARCH']
+    if columns:
+        result = es_search.get(url, rows=False)
+    else:
+        result = es_search.get(url, columns=False)
+    resp = jsonify(result)
+    return resp
+
 
 @ui.route('/geonames', methods=['GET'])
 def geonamesapi():
