@@ -59,6 +59,27 @@ def try_page(var):
         return 1
 
 
+
+@ui.route('/geonames', methods=['GET'])
+def geonamesapi():
+    q = request.args.get("q")
+    l = request.args.get("l")
+    if not q and not l:
+        resp = jsonify({'error': 'no keyword or link supplied. Use argument q or l'})
+        # resp.status_code = 404
+        return resp
+    locationsearch = current_app.config['LOCATION_SEARCH']
+    if q:
+        results = locationsearch.get_geonames(q)
+        resp = jsonify(results)
+        return resp
+    if l:
+        results = locationsearch.get(l)
+        resp = jsonify(results)
+        return resp
+
+
+
 @ui.route('/searchapi', methods=['GET'])
 def searchapi():
     q = request.args.get("q")

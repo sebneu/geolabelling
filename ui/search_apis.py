@@ -15,10 +15,15 @@ class LocationSearch:
         self.countries = db.countries
         self.postalcodes = db.postalcodes
         self.geonames = db.geonames
+        self.keywords = db.keywords
         self.nuts = db.nuts
 
     def get(self, id):
         return self.geonames.find_one({'_id': id})
+
+    def get_geonames(self, term=None, link=None):
+        t = term.strip().lower()
+        return self.keywords.find_one({'_id': t})
 
     def get_nuts_by_geovocab(self, l):
         return self.nuts.find_one({'geovocab': l})
