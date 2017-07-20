@@ -49,10 +49,12 @@
     <!-- MAIN NAVIGATION -->
         <nav id="mainnav" class="ui  fluid secondary stackable pointing icon menu " >
             {% set navigation_bar = [
-                    ('ui.index','search', 'Search', 'search'),
-                    ('ui.geotagging', 'geotagging', 'Geo Tagging','table')
+                    ('ui.index','search', 'Search', 'search')
                 ]
             -%}
+                {#,
+                    ('ui.geotagging', 'geotagging', 'Geo Tagging','table')
+                #}
             {% set active_page = active_page|default('search') -%}
             {% for href, id, caption, icon  in navigation_bar %}
                 <a class="link item {% if id == active_page %}active{% endif%}" href="{{ url_for(href)|e }}">
