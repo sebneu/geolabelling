@@ -216,7 +216,7 @@ def preview():
     url = request.args.get("tableid")
     es_search = current_app.config['ELASTICSEARCH']
     doc = es_search.get(url, columns=False)
-    res = search_apis.format_table(doc)
+    res = search_apis.format_table(doc, row_cutoff=False)
     return jsonify({'data': render_template('preview_table.jinja', table=res), 'url': res['url'], 'portal': res['portal']})
 
 

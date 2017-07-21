@@ -348,14 +348,14 @@ def format_results(results, row_cutoff):
     return data
 
 
-def format_table(doc, max_rows=500):
+def format_table(doc, row_cutoff, max_rows=500):
     d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
-    d['headers'] = _get_doc_headers(doc, row_cutoff=False)
+    d['headers'] = _get_doc_headers(doc, row_cutoff)
     if 'row' in doc['_source']:
         rows = doc['_source']['row']
         for row_no, row in enumerate(rows):
             d_row = []
-            for i, e in enumerate([c if len(c) < MAX_STRING_LENGTH else c[:MAX_STRING_LENGTH] + '...'
+            for i, e in enumerate([c[:MAX_STRING_LENGTH] + '...' if len(c) > MAX_STRING_LENGTH and row_cutoff else c
                               for c in row['values']['exact']]):
                 entry = {'value': e}
 

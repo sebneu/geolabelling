@@ -33,7 +33,7 @@
         </script>
     </head>
 
-    <body>
+    <body class="Site">
 
     <!-- HEADER -->
         <header id="header" class="ui vertical segment">
@@ -70,41 +70,52 @@
 
     <!-- CONTENT -->
 
-        <section class="ui text">
-            {% block content %}
-            {% endblock %}
-        </section>
-
-    <!-- FOOTER
+        <main class="Site-content">
+            <section class="ui text">
+                {% block content %}
+                {% endblock %}
+            </section>
+        </main>
+    <!-- FOOTER  -->
         <footer class="ui background vertical footer segment">
-            <div class="ui  container">
+            <div class="ui container">
                 <div class="ui stackable inverted divided equal height stackable grid">
-                    <div class="three wide column">
-                        <h4 class="ui grey header">About</h4>
-                        <div class="ui inverted link list">
-                            <a href="#" class="item">Sitemap</a>
-                            <a href="#" class="item">Contact Us</a>
-                            <a href="#" class="item">Religious Ceremonies</a>
-                            <a href="#" class="item">Gazebo Plans</a>
+                    <div class="ten wide column">
+                        <h4 class="ui grey header">We use data from:</h4>
+
+                        <div class="ui inverted horizontal relaxed link list">
+                            <a class="item" href="http://www.geonames.org/">
+                                <div class="content" style="color: #363;font-family: Arial, Helvetica, Sans-Serif;font-size: 20px;">
+                                    GeoNames
+                                </div>
+                            </a>
+                            <a class="item" href="http://wiki.dbpedia.org/">
+                                <img class="ui avatar image" src="{{ url_for('.static', filename='img/dbpedia.png')}}">
+                                <div class="content">
+                                  <div class="header">DBpedia</div>
+                                </div>
+                            </a>
+                            <a class="item" href="https://www.wikidata.org/">
+                                <img class="ui avatar image" src="{{ url_for('.static', filename='img/wikidata.png')}}">
+                                <div class="content">
+                                  <div class="header">Wikidata</div>
+                                </div>
+                            </a>
                         </div>
                     </div>
-                    <div class="three wide column">
-                        <h4 class="ui inverted header">Services</h4>
+                    <div class="six wide column">
+                        <h4 class="ui grey header">About:</h4>
                         <div class="ui inverted link list">
-                            <a href="#" class="item">Banana Pre-Order</a>
-                            <a href="#" class="item">DNA FAQ</a>
-                            <a href="#" class="item">How To Access</a>
-                            <a href="#" class="item">Favorite X-Men</a>
+                            <a href="http://data.wu.ac.at/" class="item">data.wu.ac.at</a>
+                            <!-- <a href="http://data.wu.ac.at/portalwatch" class="item">Open Data Portal Watch</a> -->
+                            <a href="https://www.wu.ac.at/en/infobiz/" class="item">Institute for Information Business</a>
+                            <!-- <a href="https://www.wu.ac.at/en/" class="item">WU Vienna</a> -->
                         </div>
-                    </div>
-                    <div class="seven wide column">
-                        <h4 class="ui inverted header">Footer Header</h4>
-                        <p>Extra space for a call to action inside the footer that could help re-engage users.</p>
                     </div>
                 </div>
             </div>
         </footer>
- -->
+
     <!-- SCRIPTS -->
         <script>
             {% block script %} {% endblock %}
