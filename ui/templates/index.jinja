@@ -49,7 +49,7 @@
         </div>
         {% endif %}
 
-        <div class="ui text vertical segment ">
+        <div class="ui top sticky text vertical segment">
             <div class="ui fluid category search">
                 <div class="ui fluid icon input">
                     <input class="prompt" type="text" placeholder="Search..." id="keyword" value="{% if "keyword" in data %}{{data.keyword}}{% else %}{% endif %}">
@@ -237,16 +237,20 @@
            }
     });
 
-     $("#keyword").keyup(function(event){
-         if(event.keyCode == 13){
-            var input = document.getElementById("keyword").value;
-            a = "{{ url_for('ui.search')}}"
-            if(input.length > 0){
-            a+="?q="+input
-                window.location.href=a
-            }
-         }
-     });
+    $("#keyword").keyup(function(event){
+        if(event.keyCode == 13){
+           var input = document.getElementById("keyword").value;
+           a = "{{ url_for('ui.search')}}"
+           if(input.length > 0){
+           a+="?q="+input
+               window.location.href=a
+           }
+        }
+    });
+
+    $('.ui.sticky')
+        .sticky()
+    ;
 
     function loadTablePreview(tableid) {
         $.get("{{ url_for('ui.preview') }}", {

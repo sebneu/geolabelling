@@ -66,3 +66,7 @@ a.statistic:hover{
 .Site-content {
   flex: 1;
 }
+
+.ui.fixed.sticky + p {
+  margin-top: 39px;
+}
