@@ -1,5 +1,4 @@
-
-
+from anycsv.exceptions import NoDelimiterException
 from pymongo import MongoClient
 from collections import defaultdict
 import anycsv
@@ -20,8 +19,8 @@ class GeoTagger:
         self.nuts = db.nuts
         self.postalcodes = db.postalcodes
 
-    def from_table(self, filename=None, url=None, min_matches=0.6, sample_size=300):
-        if not filename and not url:
+    def from_table(self, filename=None, url=None, content=None, min_matches=0.6, sample_size=300):
+        if not filename and not url and not content:
             return None
 
         sample = []
@@ -29,7 +28,12 @@ class GeoTagger:
         col_types = []
         num_cols = 0
         i = 0
-        for i, row in enumerate(anycsv.reader(filename=filename, url=url)):
+        try:
+            csvr = anycsv.reader(filename=filename, url=url, content=content)
+        except NoDelimiterException:
+            csvr = anycsv.reader(filename=filename, url=url, content=content, delimiter=',')
+
+        for i, row in enumerate(csvr):
             if i <= sample_size:
                 sample.append(row)
                 num_cols = len(row)
@@ -218,16 +222,17 @@ class GeoTagger:
         return [t[0] + ' (' + str(t[1]) + ')' for t in top if t[1] > 0.5][:3]
 
 
-
-    def _get_all_parents(self, geo_id, all_names):
+    def _get_all_parents(self, geo_id, all_names, all_ids):
         current = self.geonames.find_one({"_id": geo_id})
-        if current and "parent" in current:
+        if current and "parent" in current and current['parent'] not in all_ids:
+            all_ids.append(current['parent'])
             if "name" in current:
                 all_names.append(current["name"])
-            self._get_all_parents(current["parent"], all_names)
+            self._get_all_parents(current["parent"], all_names, all_ids)
 
 
     def get_all_parents(self, geo_id):
         names = []
-        self._get_all_parents(geo_id, names)
+        all_ids = []
+        self._get_all_parents(geo_id, names, all_ids)
         return names

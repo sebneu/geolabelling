@@ -20,6 +20,7 @@ def iter_datasets(p, sn, es):
                 if resp.status_code == 200:
                     dataset = resp.json()
                     dataset_name = dataset.get('name', '')
+                    dataset_link = dataset.get('@id', '')
                     dataset_description = dataset.get('description', '')
                     publisher = dataset.get('publisher', {}).get('name', '')
 
@@ -37,6 +38,8 @@ def iter_datasets(p, sn, es):
                                             fields['name'] = name
                                         if dataset_name:
                                             fields['dataset_name'] = dataset_name
+                                        if dataset_link:
+                                            fields['dataset_link'] = dataset_link
                                         if dataset_description:
                                             fields['dataset_description'] = dataset_description
                                         if publisher:
