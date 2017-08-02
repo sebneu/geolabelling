@@ -1,4 +1,5 @@
 import logging
+import time
 
 import requests
 
@@ -45,19 +46,20 @@ def iter_datasets(p, sn, es):
                                         if publisher:
                                             fields['publisher'] = publisher
                                         res = es.update(url, {'dataset': fields})
-                                        logging.debug(res)
+                                        logging.info(res)
+                                        time.sleep(1)
                             except Exception as e:
-                                logging.debug('Elasticsearch response: ' + str(e))
-                                logging.debug(e)
+                                logging.error('Elasticsearch response: ' + str(e))
+                                logging.error(e)
             except Exception as e:
                 logging.error('Error while retrieving all datasets: ' + d_id)
                 logging.error(e)
 
 
 if __name__ == '__main__':
-    p = "data_gv_at"
-    sn = 1729
-    logging.basicConfig(level=logging.DEBUG)
+    p = "www_opendataportal_at"
+    sn = 1730
+    logging.basicConfig(level=logging.INFO)
 
     es = search_apis.ESClient()
     iter_datasets(p, sn, es)

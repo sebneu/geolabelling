@@ -85,6 +85,7 @@ class GeoTagger:
                 disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'])
 
             if confidence > min_matches:
+                dt['locations'] = res_col
                 dt['column'][col]['entities'] = disamb
                 for row, e in zip(dt['row'], disamb):
                     if not 'entities' in row:
@@ -208,18 +209,17 @@ class GeoTagger:
         return context_parents
 
 
-    def column_tagger(self, disambiguated_values):
+    def column_tagger(self, disambiguated_values, confidence=0.6):
         total = 0.
         parents = defaultdict(int)
         for v in disambiguated_values:
             if v:
                 total += 1
-                for p in self.get_all_parents(v):
+                for p in self.get_all_parents(v, names=False):
                     parents[p] += 1
 
         parents = {p: parents[p]/total for p in parents}
-        top = sorted(parents.items(), key=lambda x: x[1], reverse=True)
-        return [t[0] + ' (' + str(t[1]) + ')' for t in top if t[1] > 0.5][:3]
+        return [t for t in parents if parents[t] > confidence]
 
 
     def _get_all_parents(self, geo_id, all_names, all_ids):
@@ -231,8 +231,11 @@ class GeoTagger:
             self._get_all_parents(current["parent"], all_names, all_ids)
 
 
-    def get_all_parents(self, geo_id):
-        names = []
-        all_ids = []
-        self._get_all_parents(geo_id, names, all_ids)
-        return names
+    def get_all_parents(self, geo_id, names=True):
+        all_names = []
+        all_ids = [geo_id]
+        self._get_all_parents(geo_id, all_names, all_ids)
+        if names:
+            return all_names
+        else:
+            return all_ids

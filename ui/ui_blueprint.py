@@ -129,54 +129,59 @@ def searchapi():
     return resp
 
 
-def get_search_results(row_cutoff):
-    l = request.args.get("l")
+def get_search_results(row_cutoff, aggregated_locations):
+    ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
     limit = request.args.get("limit", 10)
     offset = request.args.get("offset", 0)
     options = request.args.get("options")
 
-    data = {'total': 0, 'results': []}
+    data = {'total': 0, 'results': [], 'entities': []}
     es_search = current_app.config['ELASTICSEARCH']
     locationsearch = current_app.config['LOCATION_SEARCH']
-    if l:
+    if ls:
         if q:
-            res = es_search.searchEntityAndText(l, q, limit=limit, offset=offset)
+            res = es_search.searchEntitiesAndText(ls, q, aggregated_locations, limit=limit, offset=offset)
         else:
-            res = es_search.searchEntity(l, limit=limit, offset=offset)
+            res = es_search.searchEntities(ls, aggregated_locations, limit=limit, offset=offset)
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res, row_cutoff)
 
-        if 'geonames' in l:
-            # entity information
-            name = locationsearch.get(l)['name']
-            data['keyword'] = name
+        for l in ls:
+            entity = {'link': l}
+            data['entities'].append(entity)
+            if 'geonames' in l:
+                # entity information
+                name = locationsearch.get(l)['name']
+                data['keyword'] = name
+                if len(ls) > 1:
+                    data['keyword'] = ''
 
-            data['entity'] = {'name': name, 'link': l}
-            data['entity']['external'] = locationsearch.get_external_links(l)
-            parents = []
-            search_api = url_for('.search')
-            for name, p_l in locationsearch.get_parents(l):
-                link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
-                parents.append({'name': name, 'link': p_l, 'search': link})
-            data['entity']['parents'] = parents
-        else:
-            nuts_e = locationsearch.get_nuts_by_geovocab(l)
-            data['keyword'] = nuts_e['name']
-            data['entity'] = {'name': nuts_e['name'], 'link': l}
-            parents = []
-            search_api = url_for('.search')
+                entity['name'] = name
+                entity['external'] = locationsearch.get_external_links(l)
+                parents = []
+                search_api = url_for('.search')
+                for name, p_l in locationsearch.get_parents(l):
+                    link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
+                    parents.append({'name': name, 'link': p_l, 'search': link})
+                entity['parents'] = parents
+            else:
+                nuts_e = locationsearch.get_nuts_by_geovocab(l)
+                data['keyword'] = nuts_e['name']
+                entity['name'] = nuts_e['name']
+                parents = []
+                search_api = url_for('.search')
 
-            for i in range(2, len(nuts_e['_id'])+1):
-                nuts_id = nuts_e['_id'][:i]
-                nuts_c = locationsearch.get_nuts_by_id(nuts_id)
-                p_l = mongo_collections_utils.get_nuts_link(nuts_c)
-                link = search_api + '?' + urllib.urlencode({'l': p_l})
-                parents.append({'name': nuts_c['_id'], 'link': p_l, 'search': link})
-            data['entity']['parents'] = parents
+                for i in range(2, len(nuts_e['_id'])+1):
+                    nuts_id = nuts_e['_id'][:i]
+                    nuts_c = locationsearch.get_nuts_by_id(nuts_id)
+                    p_l = mongo_collections_utils.get_nuts_link(nuts_c)
+                    link = search_api + '?' + urllib.urlencode({'l': p_l})
+                    parents.append({'name': nuts_c['_id'], 'link': p_l, 'search': link})
+                    entity['parents'] = parents
 
     elif p:
         country_code, code = p.split('#')
@@ -188,7 +193,7 @@ def get_search_results(row_cutoff):
         # entity information
         search_api = url_for('.search')
         link = search_api + '?' + urllib.urlencode({'q': country['name'].encode('utf-8'), 'l': country['_id']})
-        data['entity'] = {'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]}
+        data['entities'].append({'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]})
         data['keyword'] = code
     elif q:
         text_res = es_search.searchText(q, limit=limit, offset=offset)
@@ -201,13 +206,13 @@ def get_search_results(row_cutoff):
 
 @ui.route('/search', methods=['GET'])
 def search():
-    data = get_search_results(row_cutoff=True)
+    data = get_search_results(row_cutoff=True, aggregated_locations=True)
     return render('index.jinja', data)
 
 
 @ui.route('/locationsearch', methods=['GET'])
 def locationsearch():
-    data = get_search_results(row_cutoff=False)
+    data = get_search_results(row_cutoff=False, aggregated_locations=True)
     return jsonify(data)
 
 

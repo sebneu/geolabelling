@@ -147,7 +147,7 @@ class ESClient(object):
             self.indexName = indexName
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations']
         exclude = []
         if columns:
             include.append("column.*")
@@ -182,7 +182,7 @@ class ESClient(object):
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntityAndText(self, entity, term, limit=10, offset=0, intersect=False):
+    def searchEntitiesAndText(self, entities, term, aggregated_locations, limit=10, offset=0, intersect=False):
         tmp = 'should'
         if intersect:
             tmp = 'must'
@@ -197,8 +197,8 @@ class ESClient(object):
                                 "query": {
                                     "constant_score": {
                                         "filter": {
-                                            "term": {
-                                                "row.entities": entity
+                                            "terms": {
+                                                "row.entities": entities
                                             }
                                         }
                                     }
@@ -225,28 +225,58 @@ class ESClient(object):
                 }
             }
         }
+        if aggregated_locations:
+            q['query']['bool'][tmp].append({
+                "constant_score": {
+                    "filter": {
+                        "terms": {
+                            "locations": entities
+                        }
+                    }
+                }
+            })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntities(self, entities, limit=10, offset=0):
+    def searchEntities(self, entities, locations, limit=10, offset=0, intersect=False):
+        tmp = 'should'
+        if intersect:
+            tmp = 'must'
         q = {
             "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
             "query": {
-                "nested": {
-                    "path": "row",
-                    "query": {
-                        "constant_score": {
-                            "filter": {
-                                "terms": {
-                                    "row.entities": entities
-                                }
+                "bool": {
+                    tmp: [
+                        {
+                            "nested": {
+                                "path": "row",
+                                "query": {
+                                    "constant_score": {
+                                        "filter": {
+                                            "terms": {
+                                                "row.entities": entities
+                                            }
+                                        }
+                                    }
+                                },
+                                "inner_hits": {},
+                                "boost": 2
                             }
                         }
-                    },
-                    "inner_hits": {}
+                    ]
                 }
             }
         }
+        if locations:
+            q['query']['bool'][tmp].append({
+                "constant_score": {
+                    "filter": {
+                        "terms": {
+                            "locations": entities
+                        }
+                    }
+                }
+            })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchText(self, term, limit=10, offset=0):

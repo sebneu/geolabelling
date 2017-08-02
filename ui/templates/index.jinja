@@ -8,45 +8,47 @@
     <p style="margin-bottom: 1cm"/>
     <div class="ui segment">
 
-        {% if "entity" in data %}
-        <div class="ui left rail">
-            <div class="ui card">
-              <div class="content">
-                {% if data.entity.link %}
-                <a class="header" href="{{data.entity.link}}">{{data.entity.name}}</a>
-                {% else %}
-                <h class="header">{{data.entity.name}}</h>
-                {% endif %}
+        {% if "entities" in data %}
+            <div class="ui left rail">
+                {% for entity in data.entities %}
+                <div class="ui card">
+                  <div class="content">
+                    {% if entity.link %}
+                    <a class="header" href="{{entity.link}}">{{entity.name}}</a>
+                    {% else %}
+                    <h class="header">{{entity.name}}</h>
+                    {% endif %}
 
-                {% if data.entity.parents %}
-                <div class="meta">
-                  {% set last = data.entity.parents|last %}
-                  <a href="{{last.link}}">{{last.name}}</a>
-                </div>
-                {% endif %}
-
-              </div>
-              <div class="content">
-                <div class="ui list">
-                    {% for ex in data.entity.external %}
-                    <div class="item">
-                        <i class="linkify icon"></i>
-                        <div class="content">
-                            <a href="{{ex.link}}">{{ex.name}}</a>
-                        </div>
+                    {% if entity.parents %}
+                    <div class="meta">
+                      {% set last = entity.parents|last %}
+                      <a href="{{last.link}}">{{last.name}}</a>
                     </div>
-                    {% endfor %}
-                </div>
-              </div>
+                    {% endif %}
 
-              {% if data.entity.parents %}
-              {% set first = data.entity.parents|first %}
-              <div class="extra content">
-                <a href="{{first.link}}">{{first.name}}</a>
-              </div>
-              {% endif %}
+                  </div>
+                  <div class="content">
+                    <div class="ui list">
+                        {% for ex in entity.external %}
+                        <div class="item">
+                            <i class="linkify icon"></i>
+                            <div class="content">
+                                <a href="{{ex.link}}">{{ex.name}}</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                  </div>
+
+                  {% if entity.parents %}
+                  {% set first = entity.parents|first %}
+                  <div class="extra content">
+                    <a href="{{first.link}}">{{first.name}}</a>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endfor %}
             </div>
-        </div>
         {% endif %}
 
         <div class="ui top sticky text vertical segment">
@@ -59,22 +61,24 @@
         </div>
 
         {% if "results" in data %}
-            {% if "entity" in data %}
+            {% if data.entities|length > 0 %}
             <div class="ui horizontal segments">
+                {% for entity in data.entities %}
                 <div class="ui segment">
                     <div class="ui big breadcrumb">
-                        {% for p in data.entity.parents %}
+                        {% for p in entity.parents %}
                             <a class="section" href="{{ p.search }}">{{p.name}}</a>
                             <i class="right chevron icon divider"></i>
                         {% endfor %}
-                      <div class="active section">{{data.entity.name}}</div>
+                      <div class="active section">{{entity.name}}</div>
                     </div>
                     <div class="ui right floated large buttons">
                       <button class="ui active primary button">Spatial entity</button>
                       <div class="or"></div>
-                      <button class="ui button" id="fulltext">Full-text results</button>
+                      <button class="ui button fulltext" id="{{entity.name}}">Full-text results</button>
                     </div>
                 </div>
+                {% endfor %}
             </div>
             {% else %}
             <div class="ui horizontal segments">
@@ -224,8 +228,8 @@
         ;
     });
 
-    $("#fulltext").click(function() {
-        var input = "{{data.keyword}}";
+    $(".button.fulltext").click(function() {
+        var input = event.target.id;
         a = "{{ url_for('ui.search')}}"
         if(input.length > 0){
         a+="?q="+input
