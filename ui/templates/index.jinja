@@ -90,14 +90,14 @@
             </div>
             {% endif %}
             {% if data.results|length > 0 %}
-                <div class="ui relaxed divided list">
+                <div class="ui relaxed divided list" id="results">
                     {% for r in data.results %}
                         <div class="item">
                           <div class="ui grid">
                             <div class="one wide column">
                               <div class="ui list">
                                   <div class="item">
-                                    <button class="primary circular ui icon button preview" >
+                                    <button class="primary circular ui icon button preview">
                                         <i class="table icon"></i>
                                     </button>
                                   </div>
@@ -176,7 +176,7 @@
 
         {% if data.total > 10 %}
         <div class="ui container center aligned" style="margin-bottom: 2cm">
-            <div class="ui pagination menu">
+            <div class="ui pagination menu" id="pagination">
 
                 {% for p_i in data.pages %}
                   {% if p_i == data.currentPage %}
@@ -196,7 +196,7 @@
     {% endif %}
 </div>
 
-<div class="ui large modal">
+<div class="ui large modal" id="preview_modal">
   <i class="close icon"></i>
   <div class="header" id="table_header">
   </div>
@@ -217,13 +217,13 @@
       })
     ;
 
-    $(".preview").click(function() {
+    $("#results").on('click', '.preview, .button', function() {
         url = $(this).closest('.ui .grid');
         var urlval = url.find('div.header').children().attr('href');
         $(table_header).text('Loading...')
         $(table_preview).html('<div class="ui loading segment" style="height:100%;width=100%"/>')
         loadTablePreview(urlval)
-        $('.large.modal')
+        $('#preview_modal')
           .modal('show')
         ;
     });
@@ -237,15 +237,22 @@
         }
     });
 
-    $(".pagination .item").click(function(){
-           var input = "{{data.keyword}}";
-           a = "{{ url_for('ui.search')}}"
-           if(input.length >0){
-                var page = $.trim(decodeURIComponent($(this).text()).replace(/[\t\n]+/g,' '));
-                a+="?q="+input+"&page="+page
-                window.location.href=a
-           }
+    $("#pagination").on('click', '.pagination, .item', function(){
+            var page = $.trim(decodeURIComponent($(this).text()).replace(/[\t\n]+/g,' '))
+            $.ajax({
+                url: window.location.href,
+                data: {"page": page},
+                type: 'POST',
+                success: function(response) {
+                    $("body").html(response);
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
     });
+
+
 
     $("#keyword").keyup(function(event){
         if(event.keyCode == 13){

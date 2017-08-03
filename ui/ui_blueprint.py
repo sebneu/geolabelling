@@ -129,12 +129,12 @@ def searchapi():
     return resp
 
 
-def get_search_results(row_cutoff, aggregated_locations):
+def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
     ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
-    limit = request.args.get("limit", 10)
-    offset = request.args.get("offset", 0)
+    limit = request.args.get("limit", limit)
+    offset = request.args.get("offset", offset)
     options = request.args.get("options")
 
     data = {'total': 0, 'results': [], 'entities': []}
@@ -204,9 +204,14 @@ def get_search_results(row_cutoff, aggregated_locations):
     return data
 
 
-@ui.route('/search', methods=['GET'])
+@ui.route('/search', methods=['GET', 'POST'])
 def search():
-    data = get_search_results(row_cutoff=True, aggregated_locations=True)
+    limit = 10
+    page = try_page(request.form.get("page", 1))
+    data = get_search_results(row_cutoff=True, aggregated_locations=True, limit=limit, offset=10 * (page-1))
+
+    data['currentPage'] = page
+    data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, data['total'], limit))]
     return render('index.jinja', data)
 
 

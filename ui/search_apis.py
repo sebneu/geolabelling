@@ -182,7 +182,7 @@ class ESClient(object):
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntitiesAndText(self, entities, term, aggregated_locations, limit=10, offset=0, intersect=False):
+    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False):
         tmp = 'should'
         if intersect:
             tmp = 'must'
@@ -225,7 +225,7 @@ class ESClient(object):
                 }
             }
         }
-        if aggregated_locations:
+        if locations:
             q['query']['bool'][tmp].append({
                 "constant_score": {
                     "filter": {
@@ -238,7 +238,7 @@ class ESClient(object):
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntities(self, entities, locations, limit=10, offset=0, intersect=False):
+    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False):
         tmp = 'should'
         if intersect:
             tmp = 'must'
