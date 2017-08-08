@@ -4,6 +4,7 @@ import time
 import requests
 
 from ui import search_apis
+from utils import time_tagger
 
 
 def iter_datasets(p, sn, es):
@@ -31,23 +32,29 @@ def iter_datasets(p, sn, es):
 
                             try:
                                 if es.exists(url):
-                                    doc = es.get(url, columns=False, rows=False)
-                                    if 'dataset' not in doc['_source']:
-                                        name = dist.get('name', '')
-                                        fields = {}
-                                        if name:
-                                            fields['name'] = name
-                                        if dataset_name:
-                                            fields['dataset_name'] = dataset_name
-                                        if dataset_link:
-                                            fields['dataset_link'] = dataset_link
-                                        if dataset_description:
-                                            fields['dataset_description'] = dataset_description
-                                        if publisher:
-                                            fields['publisher'] = publisher
-                                        res = es.update(url, {'dataset': fields})
-                                        logging.info(res)
-                                        time.sleep(1)
+                                    dsfields = {}
+                                    fields = {'dataset': dsfields}
+                                    start, end = time_tagger.get_temporal_information(dist, dataset)
+                                    if start and end:
+                                        fields['temporal_start'] = start
+                                        fields['temporal_end'] = end
+
+                                    #doc = es.get(url, columns=False, rows=False)
+                                    #if 'dataset' not in doc['_source']:
+                                    name = dist.get('name', '')
+                                    if name:
+                                        dsfields['name'] = name
+                                    if dataset_name:
+                                        dsfields['dataset_name'] = dataset_name
+                                    if dataset_link:
+                                        dsfields['dataset_link'] = dataset_link
+                                    if dataset_description:
+                                        dsfields['dataset_description'] = dataset_description
+                                    if publisher:
+                                        dsfields['publisher'] = publisher
+                                    res = es.update(url, fields)
+                                    logging.info(res)
+                                    time.sleep(3)
                             except Exception as e:
                                 logging.error('Elasticsearch response: ' + str(e))
                                 logging.error(e)
@@ -57,7 +64,7 @@ def iter_datasets(p, sn, es):
 
 
 if __name__ == '__main__':
-    p = "www_opendataportal_at"
+    p = "data_gv_at"
     sn = 1730
     logging.basicConfig(level=logging.INFO)
 
