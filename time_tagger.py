@@ -2,21 +2,24 @@ import subprocess
 import datetime
 from dateutil import parser
 import lxml.etree as etree
+import os
 
 
-def get_heideltime_annotations(value):
+def get_heideltime_annotations(value, heideltime_path):
 
-    tmp_file = 'tmp/tmp_temporalinfo.txt'
+    tmp_file = 'tmp_temporalinfo.txt'
     with open(tmp_file, 'w') as f:
         f.write(value.encode('utf-8'))
 
-    p = subprocess.Popen(['java', '-jar', 'de.unihd.dbs.heideltime.standalone.jar', '-l', 'GERMAN', '../'+tmp_file], cwd='heideltime-standalone', stdout=subprocess.PIPE)
+    cwd = os.getcwd()
+
+    p = subprocess.Popen(['java', '-jar', 'de.unihd.dbs.heideltime.standalone.jar', '-l', 'GERMAN', os.path.join(cwd, tmp_file)], cwd=heideltime_path, stdout=subprocess.PIPE)
     res, err = p.communicate()
     root = etree.fromstring(res)
     return root
 
 
-def get_temporal_information(dist, dataset):
+def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalone'):
     # get temporal information
     dataset_name = dataset.get('name', '')
     dataset_description = dataset.get('description', '')
@@ -27,7 +30,7 @@ def get_temporal_information(dist, dataset):
     # priorities to different sources of datetime information: dist > dataset info
     for value in [dist_name, dist_description, dataset_name, dataset_description, ', '.join(keywords)]:
         dates = []
-        root = get_heideltime_annotations(value)
+        root = get_heideltime_annotations(value, heideltime_path)
         for t in root:
             if t.attrib['type'] == 'DATE':
                 v = t.attrib['value']

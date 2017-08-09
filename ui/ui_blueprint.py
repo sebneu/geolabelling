@@ -133,6 +133,8 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
     ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
+    temp_start = request.args.get("start")
+    temp_end = request.args.get("end")
     limit = request.args.get("limit", limit)
     offset = request.args.get("offset", offset)
     options = request.args.get("options")
@@ -140,11 +142,14 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
     data = {'total': 0, 'results': [], 'entities': []}
     es_search = current_app.config['ELASTICSEARCH']
     locationsearch = current_app.config['LOCATION_SEARCH']
+
+    temporal_constraints = es_search.get_temporal_constraints(temp_start, temp_end)
+
     if ls:
         if q:
-            res = es_search.searchEntitiesAndText(ls, q, aggregated_locations, limit=limit, offset=offset)
+            res = es_search.searchEntitiesAndText(ls, q, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         else:
-            res = es_search.searchEntities(ls, aggregated_locations, limit=limit, offset=offset)
+            res = es_search.searchEntities(ls, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
@@ -187,7 +192,7 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
         country_code, code = p.split('#')
         country = locationsearch.get_country(country_code)
         entities = locationsearch.get_postalcode_mappings_by_country(code, country)
-        res = es_search.searchEntities(entities, limit=limit, offset=offset)
+        res = es_search.searchEntities(entities, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res, row_cutoff)
         # entity information
@@ -196,7 +201,7 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
         data['entities'].append({'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]})
         data['keyword'] = code
     elif q:
-        text_res = es_search.searchText(q, limit=limit, offset=offset)
+        text_res = es_search.searchText(q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += text_res['hits']['total']
         data['results'] += search_apis.format_results(text_res, row_cutoff)
         data['keyword'] = q

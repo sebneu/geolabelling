@@ -182,12 +182,12 @@ class ESClient(object):
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False):
+    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
             "query": {
                 "bool": {
                     tmp: [
@@ -225,6 +225,11 @@ class ESClient(object):
                 }
             }
         }
+        if temporal_constraints:
+            if tmp == 'must':
+                q['query']['bool']['must'] += temporal_constraints
+            else:
+                q['query']['bool']['must'] = temporal_constraints
         if locations:
             q['query']['bool'][tmp].append({
                 "constant_score": {
@@ -238,12 +243,12 @@ class ESClient(object):
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
 
-    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False):
+    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
             "query": {
                 "bool": {
                     tmp: [
@@ -267,6 +272,11 @@ class ESClient(object):
                 }
             }
         }
+        if temporal_constraints:
+            if tmp == 'must':
+                q['query']['bool']['must'] += temporal_constraints
+            else:
+                q['query']['bool']['must'] = temporal_constraints
         if locations:
             q['query']['bool'][tmp].append({
                 "constant_score": {
@@ -279,9 +289,9 @@ class ESClient(object):
             })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchText(self, term, limit=10, offset=0):
+    def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
             "query": {
                 "bool": {
                     "should": [
@@ -335,6 +345,8 @@ class ESClient(object):
                 }
             }
         }
+        if temporal_constraints:
+            q['query']['bool']['must'] = temporal_constraints
 
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
@@ -343,6 +355,28 @@ class ESClient(object):
             "doc": fields
         }
         return self.es.update(index=self.indexName, doc_type='table', id=id, body=q)
+
+    def get_temporal_constraints(self, start, end):
+        q = None
+        if start or end:
+            q = []
+            if start:
+                q.append({
+                    "range": {
+                        "temporal_start": {
+                            "gte": start,
+                        }
+                    }
+                })
+            if end:
+                q.append({
+                    "range": {
+                        "temporal_end": {
+                            "lt": end
+                        }
+                    }
+                })
+        return q
 
 
 MAX_STRING_LENGTH = 20
@@ -365,8 +399,9 @@ def format_results(results, row_cutoff):
         d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri']}
         d["headers"] = _get_doc_headers(doc, row_cutoff)
 
-        if 'dataset' in doc['_source']:
-            d['dataset'] = doc['_source']['dataset']
+        for f in ['dataset', 'locations', 'temporal_start', 'temporal_end']:
+            if f in doc['_source']:
+                d[f] = doc['_source'][f]
 
         if 'row' in doc['inner_hits'] and doc['inner_hits']['row']['hits']['total'] > 0:
             d['row'] = [c[:MAX_STRING_LENGTH] + '...' if len(c) > MAX_STRING_LENGTH and row_cutoff else c for c in
@@ -381,6 +416,7 @@ def format_results(results, row_cutoff):
 def format_table(doc, row_cutoff, max_rows=500):
     d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
     d['headers'] = _get_doc_headers(doc, row_cutoff)
+
     if 'row' in doc['_source']:
         rows = doc['_source']['row']
         for row_no, row in enumerate(rows):
