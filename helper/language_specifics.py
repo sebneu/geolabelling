@@ -1,0 +1,1 @@
+ADDITIONAL_STOPWORDS =  ['seit', 'bis', 'land', 'daten', 'data']

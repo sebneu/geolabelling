@@ -1,14 +1,41 @@
 from anycsv.exceptions import NoDelimiterException
 from pymongo import MongoClient
 from collections import defaultdict
+from itertools import tee, islice, izip
 import anycsv
 import re
+import langdetect
+import pycountry
+from helper.language_specifics import ADDITIONAL_STOPWORDS
 
 NUTS_PATTERN = re.compile('^[A-Z]{2}\d{0,3}$')
 # More general pattern than NUTS
 POSTAL_PATTERN = re.compile('^(([A-Z\d]){2,4}|([A-Z]{1,2}.)?\d{2,5}(\s[A-Z]{2,5})?(.[\d]{1,4})?)$')
 
+from nltk.corpus import stopwords
+import nltk
 
+def removeStopwords(words, language=None):
+    if not language:
+        l = langdetect.detect(' '.join(words))
+        lang = pycountry.languages.get(alpha_2=l)
+        if lang:
+            language = lang.name.lower()
+        else:
+            language = 'german'
+
+    for l in {language, 'english'}:
+        try:
+            sw = stopwords.words(l) + ADDITIONAL_STOPWORDS
+            words = [word for word in words if word not in sw]
+        except:
+            pass
+    return words
+
+
+def grouper(input_list, n = 2):
+    for i in xrange(len(input_list) - (n - 1)):
+        yield input_list[i:i+n]
 
 class GeoTagger:
     def __init__(self, host, port):
@@ -63,9 +90,32 @@ class GeoTagger:
         return {'disambiguation': disambiguation, 'sample': sample, 'cols': num_cols, 'rows': i, 'tagging': result}
 
 
+    def from_metadatada(self, data, fields=None):
+        values = set()
+        if fields:
+            keys = fields
+        else:
+            keys = data.keys()
+        for d in keys:
+            text = data[d]
+            text = text.lower()
+            for c in [',', ';', '.', '_', '"', '(', ')']:
+                text = text.replace(c, ' ')
+            text = nltk.word_tokenize(text.lower())
+            text = removeStopwords(text)
+            for i in range(1, max(len(text), 4)):
+                for words in grouper(text, i):
+                    v = ' '.join(words)
+                    values.add(v)
+
+        disamb, confidence, res_col = self.string_column(values)
+        return list(set(disamb) | set(res_col))
+
+
     def from_dt(self, dt, min_matches=0.6):
         #cols = [[] for _ in range(dt['no_columns'])]
         col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
+        dt['locations'] = []
 
         for i, row in enumerate(dt['row']):
             for k, c in enumerate(row['values']['exact']):
@@ -85,13 +135,19 @@ class GeoTagger:
                 disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'])
 
             if confidence > min_matches:
-                dt['locations'] = res_col
+                dt['locations'] += res_col
                 dt['column'][col]['entities'] = disamb
                 for row, e in zip(dt['row'], disamb):
                     if not 'entities' in row:
                         row['entities'] = ['' for _ in range(dt['no_columns'])]
                     row['entities'][col] = e
 
+        dt['locations'] = list(set(dt['locations']))
+        if len(dt['locations']) == 0:
+            del dt['locations']
+            return False
+        else:
+            return True
 
     def postalcodes_column(self, values):
         refs = defaultdict(dict)
@@ -118,15 +174,13 @@ class GeoTagger:
             result.append(refs[selected_country].get(i, ''))
 
         confidence = float(max_c)/len(values) if len(values) > 0 else 0.
-        aggr = self.column_tagger(result)
+        aggr = self.aggregated_parents(result)
         return result, confidence, aggr
-
-
 
 
     def string_column(self, values):
         disambiguated_col, confidence = self.disambiguate_values(values)
-        aggr = self.column_tagger(disambiguated_col)
+        aggr = self.aggregated_parents(disambiguated_col)
         return disambiguated_col, confidence, aggr
 
 
@@ -159,7 +213,8 @@ class GeoTagger:
                 refs.append('')
 
         confidence = match/len(values) if len(values) > 0 else 0.
-        return refs, confidence, None
+        aggr = self.aggregated_parents(refs)
+        return refs, confidence, aggr
 
 
     def disambiguate_value(self, value, context_parents):
@@ -220,6 +275,15 @@ class GeoTagger:
 
         parents = {p: parents[p]/total for p in parents}
         return [t for t in parents if parents[t] > confidence]
+
+
+    def aggregated_parents(self, disambiguated_values):
+        parents = set()
+        for v in set(disambiguated_values):
+            v_p = set(self.get_all_parents(v, names=False))
+            v_p.remove(v)
+            parents |= v_p
+        return list(parents)
 
 
     def _get_all_parents(self, geo_id, all_names, all_ids):
