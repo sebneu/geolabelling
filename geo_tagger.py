@@ -112,7 +112,7 @@ class GeoTagger:
         return list(set(disamb) | set(res_col))
 
 
-    def from_dt(self, dt, min_matches=0.6):
+    def from_dt(self, dt, min_matches=0.5):
         #cols = [[] for _ in range(dt['no_columns'])]
         col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
         dt['locations'] = []
