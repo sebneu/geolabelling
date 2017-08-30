@@ -43,6 +43,25 @@ def countries_to_mongo(client, args):
             countries.insert(entry)
 
 
+def add_divisions_to_geonames(client, args):
+    db = client.geostore
+    countries = db.countries
+    geonames = db.geonames
+
+    for c in countries.find():
+        g = rdflib.Graph()
+        geonames.update_one({'_id': c['_id']}, {'$set': {'admin_level': 2}})
+
+        g.parse(c['_id'] + "contains.rdf")
+        for s in g.subjects(GN.parentFeature, rdflib.URIRef(c['_id'])):
+            geonames.update_one({'_id': s}, {'$set': {'admin_level': 4}})
+
+            sub_g = rdflib.Graph()
+            sub_g.parse(s + "contains.rdf")
+            for sub_s in sub_g.subjects(GN.parentFeature, rdflib.URIRef(s)):
+                geonames.update_one({'_id': sub_s}, {'$set': {'admin_level': 6}})
+
+
 def postalcode_csv_to_mongo(client, args):
     db = client.geostore
     keywords = db.keywords
@@ -381,6 +400,9 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('countries')
     subparser.set_defaults(func=countries_to_mongo)
+
+    subparser = subparsers.add_parser('divisions')
+    subparser.set_defaults(func=add_divisions_to_geonames)
 
     args = parser.parse_args()
 

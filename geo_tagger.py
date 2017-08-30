@@ -37,6 +37,7 @@ def grouper(input_list, n = 2):
     for i in xrange(len(input_list) - (n - 1)):
         yield input_list[i:i+n]
 
+
 class GeoTagger:
     def __init__(self, host, port):
         client = MongoClient(host, port)
@@ -45,6 +46,7 @@ class GeoTagger:
         self.geonames = db.geonames
         self.nuts = db.nuts
         self.postalcodes = db.postalcodes
+        self.countries = db.countries
 
     def from_table(self, filename=None, url=None, content=None, min_matches=0.6, sample_size=300):
         if not filename and not url and not content:
@@ -112,7 +114,13 @@ class GeoTagger:
         return list(set(disamb) | set(res_col))
 
 
-    def from_dt(self, dt, min_matches=0.5):
+    def from_dt(self, dt, orig_country_code=None, min_matches=0.5):
+        country_id = None
+        if orig_country_code:
+            country = self.countries.find_one({'iso': orig_country_code})
+            if country:
+                country_id = country['_id']
+
         #cols = [[] for _ in range(dt['no_columns'])]
         col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
         dt['locations'] = []
@@ -130,9 +138,9 @@ class GeoTagger:
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
                 disamb, confidence, res_col = self.nuts_column(dt['column'][col]['values']['exact'])
             elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
-                disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'])
+                disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'], country_id)
             else:
-                disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'])
+                disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'], country_id)
 
             if confidence > min_matches:
                 dt['locations'] += res_col
@@ -149,7 +157,7 @@ class GeoTagger:
         else:
             return True
 
-    def postalcodes_column(self, values):
+    def postalcodes_without_country(self, values):
         refs = defaultdict(dict)
         for i, v in enumerate(values):
             val_res = self.postalcodes.find_one({'_id': v})
@@ -160,7 +168,7 @@ class GeoTagger:
                         reg = c.get('region')
                         if reg:
                             refs[country][i] = reg
-        #    else:
+        # else:
         #        refs['empty'][i] = ''
 
         max_c = 0
@@ -173,13 +181,42 @@ class GeoTagger:
         for i in range(len(values)):
             result.append(refs[selected_country].get(i, ''))
 
-        confidence = float(max_c)/len(values) if len(values) > 0 else 0.
+        confidence = float(max_c) / len(values) if len(values) > 0 else 0.
         aggr = self.aggregated_parents(result)
         return result, confidence, aggr
 
 
-    def string_column(self, values):
-        disambiguated_col, confidence = self.disambiguate_values(values)
+    def postalcodes_by_country(self, values, country_id):
+        match = 0.
+        result = []
+        for i, v in enumerate(values):
+            val_res = self.postalcodes.find_one({'_id': v})
+            if val_res:
+                if 'countries' in val_res:
+                    for c in val_res['countries']:
+                        country = c['country']
+                        if country_id == country:
+                            reg = c.get('region')
+                            if reg:
+                                match += 1
+                                result.append(reg)
+                                continue
+            result.append('')
+
+        confidence = match / len(values) if len(values) > 0 else 0.
+        aggr = self.aggregated_parents(result)
+        return result, confidence, aggr
+
+
+    def postalcodes_column(self, values, country_id=None):
+        if country_id:
+            return self.postalcodes_by_country(values, country_id)
+        else:
+            return self.postalcodes_without_country(values)
+
+
+    def string_column(self, values, country_id=None):
+        disambiguated_col, confidence = self.disambiguate_values(values, country_id)
         aggr = self.aggregated_parents(disambiguated_col)
         return disambiguated_col, confidence, aggr
 
@@ -217,7 +254,7 @@ class GeoTagger:
         return refs, confidence, aggr
 
 
-    def disambiguate_value(self, value, context_parents):
+    def disambiguate_value(self, value, context_parents, country_id):
         v = value.strip().lower()
         val_res = self.keywords.find_one({'_id': v})
         if not val_res:
@@ -226,7 +263,11 @@ class GeoTagger:
         candidate_score = defaultdict(int)
         if 'geonames' in val_res:
             for candidate in val_res['geonames']:
-                for p in self.get_all_parents(candidate):
+                geon_c = self.geonames.find_one({'_id': candidate})
+                if country_id and geon_c.get('country') != country_id and 'admin_level' not in geon_c:
+                    continue
+                parents = self.get_all_parents(candidate, names=False, admin_level=True)
+                for p in parents:
                     candidate_score[candidate] += context_parents[p] if p in context_parents else 0
 
         top = sorted(candidate_score.items(), key=lambda x: x[1], reverse=True)
@@ -235,13 +276,13 @@ class GeoTagger:
         return None
 
 
-    def disambiguate_values(self, values):
+    def disambiguate_values(self, values, country_id):
         context_parents = self.get_parent_dict(values)
         match = 0.
         # disambiguate values
         disambiguated = []
         for v in values:
-            id = self.disambiguate_value(v, context_parents)
+            id = self.disambiguate_value(v, context_parents, country_id)
             if id:
                 match += 1
                 disambiguated.append(id)
@@ -259,7 +300,8 @@ class GeoTagger:
             res = self.keywords.find_one({'_id': v})
             if res and 'geonames' in res:
                 for n in res['geonames']:
-                    for p in self.get_all_parents(n):
+                    parents = self.get_all_parents(n, names=False, admin_level=True)
+                    for p in parents:
                         context_parents[p] += 1
         return context_parents
 
@@ -286,19 +328,29 @@ class GeoTagger:
         return list(parents)
 
 
-    def _get_all_parents(self, geo_id, all_names, all_ids):
+    def _get_all_parents(self, geo_id, names_list, ids_list, admin_level, all_ids=list()):
         current = self.geonames.find_one({"_id": geo_id})
         if current and "parent" in current and current['parent'] not in all_ids:
+            # admin level only
+            def add_to_lists():
+                ids_list.append(current['parent'])
+                if "name" in current:
+                    names_list.append(current["name"])
+
             all_ids.append(current['parent'])
-            if "name" in current:
-                all_names.append(current["name"])
-            self._get_all_parents(current["parent"], all_names, all_ids)
+            if admin_level:
+                if 'admin_level' in current:
+                    add_to_lists()
+            else:
+                add_to_lists()
+            # recursive call
+            self._get_all_parents(current["parent"], names_list, ids_list, admin_level, all_ids)
 
 
-    def get_all_parents(self, geo_id, names=True):
+    def get_all_parents(self, geo_id, names=True, admin_level=False):
         all_names = []
         all_ids = [geo_id]
-        self._get_all_parents(geo_id, all_names, all_ids)
+        self._get_all_parents(geo_id, all_names, all_ids, admin_level)
         if names:
             return all_names
         else:
