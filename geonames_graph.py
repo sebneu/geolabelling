@@ -43,6 +43,26 @@ def countries_to_mongo(client, args):
             countries.insert(entry)
 
 
+def add_city_level_divisions(client, args):
+    db = client.geostore
+    countries = db.countries
+    geonames = db.geonames
+
+    for c in countries.find({'_id': 'http://sws.geonames.org/2782113/'}):
+        for region in geonames.find({'country': c['_id'], 'admin_level': 6}):
+            sub_g = rdflib.Graph()
+            sub_g.parse(region['_id'] + "contains.rdf")
+            all_childs = list(sub_g.subjects(GN.parentFeature, rdflib.URIRef(region['_id'])))
+            if len(all_childs) == 1:
+                sub_g = rdflib.Graph()
+                sub_g.parse(all_childs[0] + "contains.rdf")
+                all_childs = sub_g.subjects(GN.parentFeature, rdflib.URIRef(region['_id']))
+
+            for sub_r in all_childs:
+                geonames.update_one({'_id': sub_r}, {'$set': {'admin_level': 8}})
+
+
+
 def add_divisions_to_geonames(client, args):
     db = client.geostore
     countries = db.countries
@@ -403,6 +423,9 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('divisions')
     subparser.set_defaults(func=add_divisions_to_geonames)
+
+    subparser = subparsers.add_parser('city-divisions')
+    subparser.set_defaults(func=add_city_level_divisions)
 
     args = parser.parse_args()
 
