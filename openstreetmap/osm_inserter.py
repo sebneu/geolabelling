@@ -10,6 +10,8 @@ from datetime import datetime
 
 from pymongo import MongoClient
 
+from geonames_graph import get_all_parent_ids
+
 
 def write_polygon_to_file(geojson, filename, name='polygon'):
     """
@@ -34,6 +36,10 @@ def write_polygon_to_file(geojson, filename, name='polygon'):
     fid.write('END\n')
     fid.close()
 
+
+def get_geonames_url(id):
+    url = "http://sws.geonames.org/" + id + "/"
+    return url
 
 def get_geonames_id(url):
     id = url.split('/')[-2]
@@ -73,7 +79,6 @@ def remove_stopwords(s):
 
 
 def get_osm_id(candidates, admin_level):
-
     for c in candidates:
         if 'osm_type' in c and c['osm_type'] == 'relation':
             osm_id = c['osm_id']
@@ -125,12 +130,32 @@ def get_polygons(client, args):
 
 def read_osm_files(client, args):
     logging.info("OSM inserter started. Args: " + str(args))
+    processed = []
+    if args.processed:
+        with open(args.processed) as f:
+            for row in f:
+                processed.append(row.strip())
+
+
     path = args.directory
     for filename in os.listdir(path):
         if filename.endswith(".osm"):
             f = os.path.join(path, filename)
             geonames_id = filename[:-4]
-            read_osm_xml(client, f, geonames_id)
+            if geonames_id not in processed:
+                read_osm_xml(client, f, geonames_id)
+
+
+def geonamesId_to_url(geo_id):
+    return 'http://sws.geonames.org/{0}/'.format(geo_id)
+
+def in_geonames_parents(geo_id, ids):
+    # check if geonames_id is more specific or general
+    all_parents = []
+    for x in ids:
+        all_parents += get_all_parent_ids(client, geonamesId_to_url(x))
+    return geonamesId_to_url(geo_id) in all_parents
+
 
 
 def read_osm_xml(client, filename, geonames_id):
@@ -171,7 +196,7 @@ def read_osm_xml(client, filename, geonames_id):
             if c and osm_id not in c['osm_id']:
                 for osm_cand in [osm.find_one({'_id': c_id}) for c_id in c['osm_id']]:
                     # check if identical region and osm type
-                    if geonames_id in osm_cand['geonames_ids'] and osm_cand['osm_type'] == osm_type:
+                    if in_geonames_parents(geonames_id, osm_cand['geonames_ids']) and osm_cand['osm_type'] == osm_type:
                         # add ref to same osm entry with same name
                         if osm_id not in osm_cand.get('osm_sameAs', []):
                             osm.update_one({'_id': osm_cand['_id']}, {'$push': {'osm_sameAs': osm_id}})
@@ -197,7 +222,7 @@ def read_osm_xml(client, filename, geonames_id):
                         "coordinates": [lon, lat]
                     }
                 osm.insert_one(osm_entry)
-            elif osm_entry and geonames_id not in osm_entry['geonames_ids']:
+            elif osm_entry and not in_geonames_parents(geonames_id, osm_entry['geonames_ids']):
                 osm.update_one({'_id': osm_entry['_id']}, {'$push': {'geonames_ids': geonames_id}})
 
 
@@ -226,7 +251,8 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('insert-osm')
     subparser.set_defaults(func=read_osm_files)
-    subparser.add_argument('--directory', default='poly-exports/osm-export')
+    subparser.add_argument('--directory', default='poly-exports/osm-export/6')
+    subparser.add_argument('--processed', default='poly-exports/processed.csv')
 
     args = parser.parse_args()
 

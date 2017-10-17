@@ -43,22 +43,46 @@ def countries_to_mongo(client, args):
             countries.insert(entry)
 
 
+def get_subregions(region_id, region_name):
+    sub_g = rdflib.Graph()
+    sub_g.parse(region_id + "contains.rdf")
+
+    all_childs = list(sub_g.subjects(GN.parentFeature, rdflib.URIRef(region_id)))
+    if len(all_childs) == 0:
+        return []
+    elif len(all_childs) == 1:
+        c_name = sub_g.value(subject=all_childs[0], predicate=GN.name)
+        subr = get_subregions(all_childs[0], c_name)
+        if subr:
+            return subr
+        else:
+            return [all_childs[0]]
+    else:
+        res = []
+        for c in all_childs:
+            c_name = sub_g.value(subject=c, predicate=GN.name)
+            if c_name == region_name:
+                subr = get_subregions(c, c_name)
+                if subr:
+                    res += subr
+                else:
+                    res.append(c)
+            else:
+                res.append(c)
+        return res
+
+
 def add_city_level_divisions(client, args):
     db = client.geostore
     countries = db.countries
     geonames = db.geonames
 
     for c in countries.find({'_id': 'http://sws.geonames.org/2782113/'}):
+        # TODO remove ID
         for region in geonames.find({'country': c['_id'], 'admin_level': 6}):
-            sub_g = rdflib.Graph()
-            sub_g.parse(region['_id'] + "contains.rdf")
-            all_childs = list(sub_g.subjects(GN.parentFeature, rdflib.URIRef(region['_id'])))
-            if len(all_childs) == 1:
-                sub_g = rdflib.Graph()
-                sub_g.parse(all_childs[0] + "contains.rdf")
-                all_childs = sub_g.subjects(GN.parentFeature, rdflib.URIRef(region['_id']))
+            sub_regions = get_subregions(region['_id'], region['name'])
 
-            for sub_r in all_childs:
+            for sub_r in sub_regions:
                 geonames.update_one({'_id': sub_r}, {'$set': {'admin_level': 8}})
 
 

@@ -7,6 +7,8 @@ import re
 import langdetect
 import pycountry
 from helper.language_specifics import ADDITIONAL_STOPWORDS
+from openstreetmap.osm_inserter import get_geonames_url, get_geonames_id
+from osm_tagger import OSMTagger
 
 NUTS_PATTERN = re.compile('^[A-Z]{2}\d{0,3}$')
 # More general pattern than NUTS
@@ -42,6 +44,7 @@ class GeoTagger:
     def __init__(self, host, port):
         client = MongoClient(host, port)
         db = client.geostore
+        self.osm_tagger = OSMTagger(client)
         self.keywords = db.keywords
         self.geonames = db.geonames
         self.nuts = db.nuts
@@ -80,11 +83,11 @@ class GeoTagger:
         for col in range(num_cols):
             #  based on col type (90% threshold)
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
-                disamb, confidence, res_col = self.nuts_column(cols[col])
+                disamb, confidence, res_col, source = self.nuts_column(cols[col])
             elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
                 disamb, confidence, res_col = self.postalcodes_column(cols[col])
             else:
-                disamb, confidence, res_col = self.string_column(cols[col])
+                disamb, confidence, res_col, source = self.string_column(cols[col])
 
             if confidence > min_matches:
                 disambiguation[col] = disamb
@@ -92,7 +95,7 @@ class GeoTagger:
         return {'disambiguation': disambiguation, 'sample': sample, 'cols': num_cols, 'rows': i, 'tagging': result}
 
 
-    def from_metadatada(self, data, fields=None):
+    def from_metadatada(self, data, fields=None, group_of_words=4):
         values = set()
         if fields:
             keys = fields
@@ -105,25 +108,25 @@ class GeoTagger:
                 text = text.replace(c, ' ')
             text = nltk.word_tokenize(text.lower())
             text = removeStopwords(text)
-            for i in range(1, max(len(text), 4)):
+            for i in range(1, max(len(text), group_of_words)):
                 for words in grouper(text, i):
                     v = ' '.join(words)
                     values.add(v)
 
-        disamb, confidence, res_col = self.string_column(values)
+        disamb, confidence = self.disambiguate_values(values, None)
+        aggr = self.aggregated_parents(disambiguated_col)
+
+        disamb = [x for x in disamb if x]
         return list(set(disamb) | set(res_col))
 
 
-    def from_dt(self, dt, orig_country_code=None, min_matches=0.5):
-        country_id = None
-        if orig_country_code:
-            country = self.countries.find_one({'iso': orig_country_code})
-            if country:
-                country_id = country['_id']
+    def from_dt(self, dt, orig_country_code=None, min_matches=0.5, regions=list()):
+        country_id = self.get_country_by_iso(orig_country_code)
 
         #cols = [[] for _ in range(dt['no_columns'])]
         col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
-        dt['locations'] = []
+        if not 'locations' in dt:
+            dt['locations'] = []
 
         for i, row in enumerate(dt['row']):
             for k, c in enumerate(row['values']['exact']):
@@ -136,15 +139,17 @@ class GeoTagger:
         for col in range(dt['no_columns']):
             #  based on col type (90% threshold)
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
-                disamb, confidence, res_col = self.nuts_column(dt['column'][col]['values']['exact'])
+                disamb, confidence, res_col, source = self.nuts_column(dt['column'][col]['values']['exact'])
             elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
                 disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'], country_id)
+                source = 'geonames'
             else:
-                disamb, confidence, res_col = self.string_column(dt['column'][col]['values']['exact'], country_id)
+                disamb, confidence, res_col, source = self.string_column(dt['column'][col]['values']['exact'], country_id, regions=regions)
 
             if confidence > min_matches:
                 dt['locations'] += res_col
                 dt['column'][col]['entities'] = disamb
+                dt['column'][col]['source'] = source
                 for row, e in zip(dt['row'], disamb):
                     if not 'entities' in row:
                         row['entities'] = ['' for _ in range(dt['no_columns'])]
@@ -215,10 +220,23 @@ class GeoTagger:
             return self.postalcodes_without_country(values)
 
 
-    def string_column(self, values, country_id=None):
+    def string_column(self, values, country_id=None, regions=list(), min_geonames_matches=0.4):
         disambiguated_col, confidence = self.disambiguate_values(values, country_id)
         aggr = self.aggregated_parents(disambiguated_col)
-        return disambiguated_col, confidence, aggr
+        source = 'geonames'
+
+        # try OSM tagger if no mappings
+        if confidence < min_geonames_matches:
+            osm_ids, confidence = self.osm_tagger.label_values(values, regions)
+            geonames_regions = set()
+            disambiguated_col = []
+            for r in osm_ids:
+                disambiguated_col.append(r['_id'] if r else '')
+                if r:
+                    geonames_regions.update([get_geonames_url(x) for x in r['geonames_ids']])
+            aggr = self.aggregated_parents(geonames_regions)
+            source = 'osm'
+        return disambiguated_col, confidence, aggr, source
 
 
     def get_numeric_parent_dict(self, values):
@@ -235,23 +253,26 @@ class GeoTagger:
     def nuts_column(self, values):
         match = 0.
         refs = []
+        source = 'geonames'
         for v in values:
             val_res = self.nuts.find_one({'_id': v})
             if val_res:
                 match += 1
                 if 'geonames' in val_res:
                     id = val_res['geonames']
-                elif 'dbpedia' in val_res:
-                    id = val_res['dbpedia']
+                #elif 'dbpedia' in val_res:
+                #    id = val_res['dbpedia']
+                #else:
+                #    id = val_res['geovocab']
+                    refs.append(id)
                 else:
-                    id = val_res['geovocab']
-                refs.append(id)
+                    refs.append('')
             else:
                 refs.append('')
 
         confidence = match/len(values) if len(values) > 0 else 0.
         aggr = self.aggregated_parents(refs)
-        return refs, confidence, aggr
+        return refs, confidence, aggr, source
 
 
     def disambiguate_value(self, value, context_parents, country_id):
@@ -293,6 +314,14 @@ class GeoTagger:
         return disambiguated, confidence
 
 
+    def get_country_by_iso(self, country_code):
+        country_id = None
+        if country_code:
+            country = self.countries.find_one({'iso': country_code})
+            if country:
+                country_id = country['_id']
+        return country_id
+
     def get_parent_dict(self, values):
         context_parents = defaultdict(int)
         for value in values:
@@ -327,7 +356,6 @@ class GeoTagger:
             parents |= v_p
         return list(parents)
 
-
     def _get_all_parents(self, geo_id, names_list, ids_list, admin_level, all_ids=list()):
         current = self.geonames.find_one({"_id": geo_id})
         if current and "parent" in current and current['parent'] not in all_ids:
@@ -344,8 +372,7 @@ class GeoTagger:
             else:
                 add_to_lists()
             # recursive call
-            self._get_all_parents(current["parent"], names_list, ids_list, admin_level, all_ids)
-
+                self._get_all_parents(current["parent"], names_list, ids_list, admin_level, all_ids)
 
     def get_all_parents(self, geo_id, names=True, admin_level=False):
         all_names = []
@@ -355,3 +382,22 @@ class GeoTagger:
             return all_names
         else:
             return all_ids
+
+    def get_all_subregions(self, geonames_id, iso_country_code):
+        """
+        Get all subregions of a level 4 geonames region
+        :param geonames_id: admin level 4 geonames ID
+        :param iso_country_code: iso code for a coutry
+        :return: iterable of all subregions
+        """
+        country = self.get_country_by_iso(iso_country_code)
+        q = self.geonames.find({'admin_level': 6, 'parent': geonames_id, "country" : country})
+
+        r_tmp = [get_geonames_id(r['_id']) for r in q]
+        regions = set()
+        for r in r_tmp:
+            regions.add(r)
+            q = self.geonames.find({'admin_level': 8, 'parent': r, "country": country})
+            for sub_r in q:
+                regions.add(get_geonames_id(sub_r['_id']))
+        return regions
