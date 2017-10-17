@@ -114,10 +114,10 @@ class GeoTagger:
                     values.add(v)
 
         disamb, confidence = self.disambiguate_values(values, None)
-        aggr = self.aggregated_parents(disambiguated_col)
+        aggr = self.aggregated_parents(disamb)
 
         disamb = [x for x in disamb if x]
-        return list(set(disamb) | set(res_col))
+        return list(set(disamb) | set(aggr))
 
 
     def from_dt(self, dt, orig_country_code=None, min_matches=0.5, regions=list()):
