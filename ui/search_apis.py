@@ -5,6 +5,8 @@ import pymongo
 from pymongo import MongoClient
 import urllib
 from elasticsearch import Elasticsearch
+
+from openstreetmap.osm_inserter import get_geonames_url
 from ui.utils import mongo_collections_utils
 
 
@@ -15,11 +17,15 @@ class LocationSearch:
         self.countries = db.countries
         self.postalcodes = db.postalcodes
         self.geonames = db.geonames
+        self.osm = db.osm
         self.keywords = db.keywords
         self.nuts = db.nuts
 
     def get(self, id):
         return self.geonames.find_one({'_id': id})
+
+    def get_osm(self, id):
+        return self.osm.find_one({'_id': id})
 
     def get_geonames(self, term=None, link=None):
         t = term.strip().lower()
@@ -65,6 +71,29 @@ class LocationSearch:
                     tmp['description'] = c['name']
             results.append(tmp)
         return results
+
+
+    def get_osm_names_by_substring(self, q, search_api, limit=10):
+        results = []
+
+        cursor = self.osm.find({'$text': { '$search': q }}, {'score': {'$meta': "textScore"}})
+        cursor.sort([('score', {'$meta': 'textScore'})])
+        cursor.limit(limit)
+
+        for res in cursor:
+            tmp = {
+                'title': res['name'],
+                'url': search_api + '?' + urllib.urlencode({'l': 'osm:' + res['_id']})
+            }
+            if 'geonames_ids' in res:
+                regions = []
+                for id in res['geonames_ids']:
+                    c = self.geonames.find_one({'_id': get_geonames_url(id)})
+                    regions.append(c['name'])
+                tmp['description'] = ', '.join(regions)
+            results.append(tmp)
+        return results
+
 
     def get_postalcodes(self, q, search_api, limit=5):
         results = []
@@ -244,6 +273,7 @@ class ESClient(object):
 
 
     def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
+        entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
             tmp = 'must'

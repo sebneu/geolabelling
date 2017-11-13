@@ -1,13 +1,13 @@
 OSMOSIS=/home/neumaier/Downloads/osmosis-latest/bin/osmosis
-POLY_FILES=/home/neumaier/Repos/odgraph/poly-exports/at/6/
-OUT_DIR=/home/neumaier/Repos/odgraph/poly-exports/osm-export/6/
+POLY_FILES=/home/neumaier/Repos/odgraph/poly-exports/de/6/
+OUT_DIR=/home/neumaier/Repos/odgraph/poly-exports/osm-export/de/6/
 
 F_COUNT=$(ls -1q $POLY_FILES | wc -l)
 BATCH=93
 
 echo $F_COUNT
 
-CMD="$OSMOSIS --read-pbf-fast workers=4 file=\"austria-latest.osm.pbf\" --way-key keyList=highway,amenity --used-node --tee $BATCH "
+CMD="$OSMOSIS --read-pbf-fast workers=4 file=\"germany-latest.osm.pbf\" --way-key keyList=highway,amenity --used-node --tee $BATCH "
 
 SKIP=0
 echo $SKIP

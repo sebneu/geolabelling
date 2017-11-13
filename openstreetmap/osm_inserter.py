@@ -5,12 +5,12 @@ import os
 import logging
 
 import requests
-
-from datetime import datetime
+import time
 
 from pymongo import MongoClient
-
 from geonames_graph import get_all_parent_ids
+
+DATA_WU_REFERRER = 'http://data.wu.ac.at'
 
 
 def write_polygon_to_file(geojson, filename, name='polygon'):
@@ -111,10 +111,17 @@ def get_polygons(client, args):
         res = geonames.find({'admin_level': admin_level, 'country': country})
 
     for region in res:
+        # waiting time to reduce heavy use
+        time.sleep(1)
+
         r_name = region['name']
         r_name = remove_stopwords(r_name)
         r_url = u'http://nominatim.openstreetmap.org/search?q={0}&countrycodes={1}&format=json'.format(r_name, c_iso)
-        req = requests.get(r_url)
+
+        s = requests.Session()
+        s.headers.update({'referrer': DATA_WU_REFERRER})
+        req = s.get(r_url)
+
         if req.status_code == 200:
             candidates = req.json()
 
@@ -240,12 +247,12 @@ if __name__ == "__main__":
     subparser = subparsers.add_parser('poly-export')
     subparser.set_defaults(func=export_polygons)
     subparser.add_argument('--directory', default='poly-exports')
-    subparser.add_argument('--country', default='http://sws.geonames.org/2782113/')
+    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
     subparser.add_argument('--level', type=int, default=6)
 
     subparser = subparsers.add_parser('osm-polygons')
     subparser.set_defaults(func=get_polygons)
-    subparser.add_argument('--country', default='http://sws.geonames.org/2782113/')
+    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
     subparser.add_argument('--level', type=int, default=8)
     subparser.add_argument('--update', action='store_true')
 

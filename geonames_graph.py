@@ -73,11 +73,18 @@ def get_subregions(region_id, region_name):
 
 
 def add_city_level_divisions(client, args):
+    country = args.country
+
     db = client.geostore
     countries = db.countries
     geonames = db.geonames
 
-    for c in countries.find({'_id': 'http://sws.geonames.org/2782113/'}):
+    if country:
+        countries_iter = countries.find({'_id': country})
+    else:
+        countries_iter = countries.find()
+
+    for c in countries_iter:
         # TODO remove ID
         for region in geonames.find({'country': c['_id'], 'admin_level': 6}):
             sub_regions = get_subregions(region['_id'], region['name'])
@@ -449,6 +456,7 @@ if __name__ == "__main__":
     subparser.set_defaults(func=add_divisions_to_geonames)
 
     subparser = subparsers.add_parser('city-divisions')
+    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
     subparser.set_defaults(func=add_city_level_divisions)
 
     args = parser.parse_args()

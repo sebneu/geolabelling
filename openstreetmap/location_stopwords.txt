@@ -2,3 +2,5 @@ Politischer Bezirk
 Stadt
 Gemeindebezirk
 Gemeinde
+Kreisfreie Stadt
+Regierungsbezirk

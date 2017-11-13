@@ -4,6 +4,7 @@ from urlparse import urlparse
 import jinja2
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, jsonify
 from geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
+from openstreetmap.osm_inserter import get_geonames_url
 from ui import search_apis
 from ui.utils import mongo_collections_utils
 
@@ -22,10 +23,13 @@ def get_domain(context, url):
 ui.add_app_template_filter(get_domain)
 
 
+LEADING_PARENTS = 2
+
+
 ##-----------Helper Functions -----------##
 def render(templateName, data=None, **kwargs):
     """
-    FLask Jinja rendering function
+    FLask Jinja rendering functio
     :param templateName: jinja template name
     :param data: json data for the template
     :return: html
@@ -111,6 +115,12 @@ def searchapi():
       }
     }
 
+    results = locationsearch.get_osm_names_by_substring(q, search_api)
+    resp["results"]["postalcodes"] = {
+      "name": "Streets",
+      "results": results
+    }
+
     if POSTAL_PATTERN.match(q):
         postalcodes = locationsearch.get_postalcodes(q, search_api)
         resp["results"]["postalcodes"] = {
@@ -172,7 +182,29 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
                 for name, p_l in locationsearch.get_parents(l):
                     link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
                     parents.append({'name': name, 'link': p_l, 'search': link})
-                entity['parents'] = parents
+                entity['parents'] = parents[LEADING_PARENTS:]
+            elif l.startswith('osm:'):
+                l = l[4:]
+                osm_entry = locationsearch.get_osm(l)
+                if len(osm_entry['geonames_ids']) > 0:
+                    geon = osm_entry['geonames_ids'][0]
+                    geon = get_geonames_url(geon)
+                name = osm_entry['name']
+                data['keyword'] = name
+                if len(ls) > 1:
+                    data['keyword'] = ''
+
+                entity['name'] = name
+                parents = []
+                search_api = url_for('.search')
+                if geon:
+                    for name, p_l in locationsearch.get_parents(geon):
+                        link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': p_l})
+                        parents.append({'name': name, 'link': p_l, 'search': link})
+                    name = locationsearch.get(geon)['name']
+                    link = search_api + '?' + urllib.urlencode({'q': name.encode('utf-8'), 'l': geon})
+                    parents.append({'name': name, 'link': geon, 'search': link})
+                    entity['parents'] = parents[LEADING_PARENTS:]
             else:
                 nuts_e = locationsearch.get_nuts_by_geovocab(l)
                 data['keyword'] = nuts_e['name']
