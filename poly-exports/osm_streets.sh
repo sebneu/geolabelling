@@ -1,9 +1,9 @@
 OSMOSIS=/home/neumaier/Downloads/osmosis-latest/bin/osmosis
-POLY_FILES=/home/neumaier/Repos/odgraph/poly-exports/de/6/
-OUT_DIR=/home/neumaier/Repos/odgraph/poly-exports/osm-export/de/6/
+POLY_FILES=/home/neumaier/Repos/odgraph/poly-exports/de/8/
+OUT_DIR=/home/neumaier/Repos/odgraph/poly-exports/osm-export/de/8/
 
 F_COUNT=$(ls -1q $POLY_FILES | wc -l)
-BATCH=65
+BATCH=100
 
 echo $F_COUNT
 

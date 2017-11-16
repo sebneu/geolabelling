@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 import yaml
 import pymongo
@@ -420,14 +421,19 @@ def _get_doc_headers(doc, row_cutoff):
     return headers
 
 
-def format_results(results, row_cutoff):
+def format_results(results, row_cutoff, dataset=False):
     """Print results nicely:
     doc_id) content
     """
+    datasets = defaultdict(list)
     data = []
     for doc in results['hits']['hits']:
         d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri']}
         d["headers"] = _get_doc_headers(doc, row_cutoff)
+
+        if dataset and "dataset_link" in d["portal"]:
+            d_link = d["portal"]["dataset_link"]
+            datasets[d_link].append()
 
         for f in ['dataset', 'locations', 'temporal_start', 'temporal_end']:
             if f in doc['_source']:

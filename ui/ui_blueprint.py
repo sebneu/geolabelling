@@ -147,7 +147,7 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
     temp_end = request.args.get("end")
     limit = request.args.get("limit", limit)
     offset = request.args.get("offset", offset)
-    options = request.args.get("options")
+    dataset = bool(request.args.get("dataset", False))
 
     data = {'total': 0, 'results': [], 'entities': []}
     es_search = current_app.config['ELASTICSEARCH']
@@ -163,7 +163,7 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
-        data['results'] += search_apis.format_results(res, row_cutoff)
+        data['results'] += search_apis.format_results(res, row_cutoff, dataset)
 
         for l in ls:
             entity = {'link': l}

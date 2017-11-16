@@ -37,7 +37,7 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
                 date = parser.parse(v)
                 dates.append(date)
         if len(dates) > 0:
-            start = min(dates)
-            end = max(dates)
+            start = min(dates).strftime("%Y-%m-%d")
+            end = max(dates).strftime("%Y-%m-%d")
             return start, end
     return None, None

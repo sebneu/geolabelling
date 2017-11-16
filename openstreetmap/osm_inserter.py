@@ -83,13 +83,23 @@ def get_osm_id(candidates, admin_level):
         if 'osm_type' in c and c['osm_type'] == 'relation':
             osm_id = c['osm_id']
             c_url = 'http://www.openstreetmap.org/api/0.6/relation/' + osm_id
+
+            # waiting time to reduce heavy use
+            time.sleep(1)
+            s = requests.Session()
+            s.headers.update({'referrer': DATA_WU_REFERRER})
             req = requests.get(c_url)
 
             root = ET.fromstring(req.content)
             for node in root.iter('tag'):
                 if node.attrib['k'] == "admin_level" and node.attrib['v'] == str(admin_level):
                     select_url = 'http://nominatim.openstreetmap.org/reverse?osm_id={0}&osm_type=R&polygon_geojson=1&format=json'.format(osm_id)
-                    req = requests.get(select_url)
+
+                    # waiting time to reduce heavy use
+                    time.sleep(1)
+                    s = requests.Session()
+                    s.headers.update({'referrer': DATA_WU_REFERRER})
+                    req = s.get(select_url)
                     select = req.json()
                     return (osm_id, select['geojson'])
     return None
