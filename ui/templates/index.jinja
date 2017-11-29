@@ -5,9 +5,26 @@
 {% block content %}
 <div class="ui container">
     <h2 class="ui divider horizontal header">Search Open Data</h2>
-    <p style="margin-bottom: 1cm"/>
-    <div class="ui segment">
 
+    <p style="margin-bottom: 0.3cm"/>
+    <div class="ui disabled segment" id="dateFilter">
+        <div class="ui grid">
+            <div class="twelve wide column">
+                <div class="ui slider checkbox" id="dateFilterSlider">
+                  <input type="checkbox" name="dateFilterSlider">
+                  <label>Filter results by time span</label>
+                </div>
+                <p style="margin-bottom: 0.7cm"/>
+                <div id="slider"></div>
+            </div>
+            <div class="four wide right aligned bottom column">
+                <button class="ui disabled button applyFilter">Filter results</button>
+            </div>
+        </div>
+    </div>
+    <p style="margin-bottom: 0.5cm"/>
+
+    <div class="ui segment">
         {% if "entities" in data %}
             <div class="ui left rail">
                 {% for entity in data.entities %}
@@ -232,8 +249,8 @@
         var input = event.target.id;
         a = "{{ url_for('ui.search')}}"
         if(input.length > 0){
-        a+="?q="+input
-            window.location.href=a
+           a+="?q="+input
+           window.location.href=a
         }
     });
 
@@ -281,4 +298,79 @@
         });
     }
 
+    var startD = $.query.get("start");
+    if(startD != "") {
+        var tmp = startD.split('-')
+        startD = new Date(tmp[0], tmp[1]-1, tmp[2]);
+    } else {
+        startD = new Date(2010, 0, 1);
+    }
+    var endD = $.query.get("end");
+    if(endD != "") {
+        var tmp = endD.split('-')
+        endD = new Date(tmp[0], tmp[1]-1, tmp[2]);
+    } else {
+        endD = new Date(2020, 0, 1);
+    }
+
+    $("#slider").dateRangeSlider(
+      {
+        bounds: {
+          min: new Date(2000, 0, 1),
+          max: new Date(2025, 11, 31)
+        },
+        defaultValues: {
+          min: startD,
+          max: endD
+        },
+        step:{
+          months: 1
+        },
+        formatter:function(val){
+            month = val.getMonth() + 1,
+            year = val.getFullYear();
+          return month + "/" + year;
+        },
+        enabled: false
+      }
+    );
+
+    $("#dateFilterSlider")
+      .checkbox()
+      .first().checkbox({
+        onChecked: function() {
+          enableTimespan(true);
+        },
+        onUnchecked: function() {
+          enableTimespan(false);
+        }
+      });
+
+    $(".button.applyFilter").click(function() {
+        reloadWithTimespan()
+    });
+
+    function enableTimespan(enable){
+        if(enable) {
+          $("#slider").dateRangeSlider('option', {enabled: true});
+          $("#dateFilter").removeClass('disabled');
+          $(".button.applyFilter").removeClass('disabled');
+        } else {
+          $("#slider").dateRangeSlider("option", {enabled: false})
+          $("#dateFilter").addClass('disabled');
+          $(".button.applyFilter").addClass('disabled');
+        }
+    }
+
+    function reloadWithTimespan() {
+        var dateValues = $("#slider").dateRangeSlider("values");
+        var minD = dateValues.min.toISOString().split('T')[0]
+        var maxD = dateValues.max.toISOString().split('T')[0]
+        window.location.href = $.query.set("end", maxD).set("start", minD);
+    }
+
+    if($.query.get("start") && $.query.get("start")) {
+       enableTimespan(true)
+       $("#dateFilterSlider").checkbox('set checked');
+    }
 {% endblock %}

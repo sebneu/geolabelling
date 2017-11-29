@@ -9,11 +9,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <link rel="stylesheet" type="text/css" href="{{ url_for('.static', filename='semantic/semantic.min.css')}}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('.static', filename='css/jquery-ui.min.css')}}">
+	    <link rel="stylesheet" id="themeCSS" href="{{ url_for('.static', filename='css/classic.css')}}">
 
         {% block headcss %} {% endblock %}
         <link rel="stylesheet" type="text/css" href="{{ url_for('.static', filename='css/csvengine.css')}}">
 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+        <script src="{{ url_for('.static', filename='jquery-ui.min.js')}}"></script>
+        <script src="{{ url_for('.static', filename='jquery.query-object.js')}}"></script>
+        <script src="{{ url_for('.static', filename='rangeslider/jQDateRangeSlider-min.js')}}"></script>
+
+
         <script src="{{ url_for('.static', filename='semantic/semantic.min.js')}}"></script>
 
         {% block headscripts %}  {% endblock %}
