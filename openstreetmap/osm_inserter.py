@@ -258,7 +258,7 @@ if __name__ == "__main__":
     subparser.set_defaults(func=export_polygons)
     subparser.add_argument('--directory', default='poly-exports')
     subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
-    subparser.add_argument('--level', type=int, default=6)
+    subparser.add_argument('--level', type=int, default=8)
 
     subparser = subparsers.add_parser('osm-polygons')
     subparser.set_defaults(func=get_polygons)
