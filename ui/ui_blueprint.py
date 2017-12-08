@@ -238,6 +238,11 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
         data['results'] += search_apis.format_results(text_res, row_cutoff)
         data['keyword'] = q
 
+    # format entities -> convert to links
+    for res in data['results']:
+        if 'entities' in res:
+            res['entities'] = [locationsearch.format_entities(e) for e in res['entities']]
+
     return data
 
 
@@ -263,7 +268,7 @@ def preview():
     url = request.args.get("tableid")
     es_search = current_app.config['ELASTICSEARCH']
     doc = es_search.get(url, columns=False)
-    res = search_apis.format_table(doc, row_cutoff=False)
+    res = search_apis.format_table(doc=doc, locationsearch=current_app.config['LOCATION_SEARCH'], row_cutoff=False)
     return jsonify({'data': render_template('preview_table.jinja', table=res), 'url': res['url'], 'portal': res['portal']})
 
 

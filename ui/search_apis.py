@@ -22,6 +22,16 @@ class LocationSearch:
         self.keywords = db.keywords
         self.nuts = db.nuts
 
+
+    def format_entities(self, e):
+        if e == '' or not e:
+            return ''
+        elif e.startswith('http://sws.geonames.org/'):
+            return e
+        else:
+            osm_entity = self.osm.find_one({'_id': e})
+            return 'http://www.openstreetmap.org/' + osm_entity['osm_type'] + '/' + e
+
     def get(self, id):
         return self.geonames.find_one({'_id': id})
 
@@ -53,7 +63,7 @@ class LocationSearch:
         results = []
         #for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
 
-        cursor = self.geonames.find({'$text': { '$search': q }}, {'score': {'$meta': "textScore" }})
+        cursor = self.geonames.find({'$text': { '$search': q}, 'datasets': True}, {'score': {'$meta': "textScore" }})
         cursor.sort([('score', {'$meta': 'textScore'})])
         cursor.limit(limit)
 
@@ -77,7 +87,7 @@ class LocationSearch:
     def get_osm_names_by_substring(self, q, search_api, limit=10):
         results = []
 
-        cursor = self.osm.find({'$text': { '$search': q }}, {'score': {'$meta': "textScore"}})
+        cursor = self.osm.find({'$text': {'$search': q }, 'datasets': True}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
         cursor.limit(limit)
 
@@ -410,6 +420,7 @@ class ESClient(object):
         return q
 
 
+
 MAX_STRING_LENGTH = 20
 def _get_doc_headers(doc, row_cutoff):
     headers = []
@@ -449,7 +460,7 @@ def format_results(results, row_cutoff, dataset=False):
     return data
 
 
-def format_table(doc, row_cutoff, max_rows=500):
+def format_table(doc, row_cutoff, locationsearch, max_rows=500):
     d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
     d['headers'] = _get_doc_headers(doc, row_cutoff)
 
@@ -462,7 +473,8 @@ def format_table(doc, row_cutoff, max_rows=500):
                 entry = {'value': e}
 
                 if 'entities' in row:
-                    entry['entity'] = row['entities'][i]
+                    entry['entity'] = locationsearch.format_entities(row['entities'][i])
+
                 d_row.append(entry)
             d['rows'].append(d_row)
             if row_no > max_rows:
