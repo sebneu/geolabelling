@@ -195,6 +195,7 @@ class GeoTagger:
         match = 0.
         result = []
         for i, v in enumerate(values):
+            res_region = ''
             val_res = self.postalcodes.find_one({'_id': v})
             if val_res:
                 if 'countries' in val_res:
@@ -204,9 +205,9 @@ class GeoTagger:
                             reg = c.get('region')
                             if reg:
                                 match += 1
-                                result.append(reg)
-                                continue
-            result.append('')
+                                res_region = reg
+                                break
+            result.append(res_region)
 
         confidence = match / len(values) if len(values) > 0 else 0.
         aggr = self.aggregated_parents(result)

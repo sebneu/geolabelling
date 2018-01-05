@@ -2,6 +2,7 @@ import subprocess
 import datetime
 from dateutil import parser
 import lxml.etree as etree
+from xml.sax.saxutils import escape, unescape
 import os
 
 
@@ -30,7 +31,9 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
     # priorities to different sources of datetime information: dist > dataset info
     for value in [dist_name, dist_description, dataset_name, dataset_description, ', '.join(keywords)]:
         dates = []
-        root = get_heideltime_annotations(value, heideltime_path)
+        # first escape any xml escaped characters
+        esc_v = escape(value)
+        root = get_heideltime_annotations(esc_v, heideltime_path)
         for t in root:
             if t.attrib['type'] == 'DATE':
                 v = t.attrib['value']
