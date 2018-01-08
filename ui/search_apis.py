@@ -187,7 +187,7 @@ class ESClient(object):
             self.indexName = indexName
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations', 'dataset.*']
         exclude = []
         if columns:
             include.append("column.*")
@@ -461,8 +461,15 @@ def format_results(results, row_cutoff, dataset=False):
 
 
 def format_table(doc, row_cutoff, locationsearch, max_rows=500):
-    d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], 'rows': []}
+    d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], "publisher": doc['_source']['dataset'].get('publisher', ''), "title": doc['_source']['dataset'].get('dataset_name', ''), 'rows': []}
     d['headers'] = _get_doc_headers(doc, row_cutoff)
+
+    d['locations'] = []
+    if 'locations' in doc['_source']:
+        for l in doc['_source']['locations']:
+            geo_l = locationsearch.get(l)
+            if geo_l:
+                d['locations'].append({'name': geo_l['name'], 'uri': l})
 
     if 'row' in doc['_source']:
         rows = doc['_source']['row']

@@ -1,0 +1,733 @@
+{% extends "base_layout.jinja" %}
+
+{% set active_page = "eswc" -%}
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui header">ESWC'18 Datasets & Evaluations</h2>
+    <div class="container ui">
+        <p>
+            To show the performance and limitations of our geo-labelling approach we randomly selected ten datasets per data portal (using the ElasticSearch's built-in <a href="https://www.elastic.co/guide/en/elasticsearch/guide/current/random-scoring.html">random function</a>).
+            We manually categorize the datasets' labels by assigning the following tags:
+        </p>
+
+<div class="ui segment">
+            <div class="ui relaxed divided list">
+              <div class="item">
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                The values in one or multiple columns are correctly detected and assigned.
+              </div>
+              <div class="item">
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                The correct metadata labels are included in the assigned label set.
+              </div>
+              <div class="item">
+                <div class="ui pink label">
+                  Incorrect GeoNames labels
+                </div>
+                Some of the individual GeoNames column labels are incorrect.
+              </div>
+              <div class="item">
+                <div class="ui violet label">
+                  Incorrect OSM labels
+                </div>
+                Some of the individual OpenStreetMap (OSM) column labels are incorrect.
+              </div>
+              <div class="item">
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                Some of the assigned metadata labels are incorrect.
+              </div>
+              <div class="item">
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+                There is no geo-spatial data in this dataset.
+              </div>
+              <div class="item">
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                There are potentially geo-references in the dataset but the respective labels are not in the knowledge graph or the algorithm could not detect the entities.
+              </div>
+            </div>
+</div>
+
+
+        <p>
+        Initially, a total of 40 datasets - ten datasets per indexed portal - where randomly selected.
+        Out of these 40 we identified 16 datasets which did not contain any geo-spatial data that could be mapped.
+        All these 16 datasets without geo-spatial data are published on the two non-governmental portals opendataportal.at and offenedaten.de.
+        From the remaining 24 datasets we identified in 17 datasets correct labels, while for 4 datasets we assigned incorrect OSM labels and also for 4 datasets incorrect GeoNames labels.
+        </p>
+        <p>
+        For 7 datasets we identified some content that would have been some additional geo-information but was not labelled by our approach.
+        For instance, a dataset contains sub-district labels of a city which are not present in the knowledge graph, or city/region names are embedded in text and use abbreviations (e.g. "Str" for the German word Straße).
+        </p>
+        <p>
+        For 33 out of the 40 datasets we were able to derive a correct metadata label based on the title or publisher of the dataset.
+        However, for 32 datasets we derived some incorrect metadata labels. For instance, given the publisher ``Stadt Wien'' we link the two geo-entities ``Vienna'', the city of Vienna, Austria, and ``Stadt'', a German city in Saxony.
+        An easy fix to these issues is to restrict the metadata labels to the origin country of the portal, however, we wanted to stay with our approach as general as possible and so that we do not restrict the labels to national datasets only.
+        Also, given that we use the labels in a search engine, these false positives can be considered as an minor issue, i.e. down-rated by an adequate ranking of the results, with the benefits of a more comprehensive result set.
+        </p>
+
+
+        <p>
+        <h2>data.gv.at</h2>
+ <div class="ui relaxed divided list">
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtWo/WO_2016_Sanierung_Kleinhausbau.csv">Sanierung Kleinhausbau - Bewilligungen 2016</a>
+     <div class="description">http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtWo/WO_2016_Sanierung_Kleinhausbau.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://gis.ktn.gv.at/OGD/Bildung_Forschung/schulerklassen201516stand01102015.csv">Schüler- und Klassenzahlen pro Schule (Pflichtschule) in Kärnten je Schuljahr</a>
+     <div class="description">http://gis.ktn.gv.at/OGD/Bildung_Forschung/schulerklassen201516stand01102015.csv</div>
+                 <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui violet label">
+                  Incorrect OSM labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+  </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://www.wien.gv.at/politik/wahlen/ogd/bp163_99999999_9999_wvb.csv">Bundespräsidentenwahlen Wien</a>
+     <div class="description">https://www.wien.gv.at/politik/wahlen/ogd/bp163_99999999_9999_wvb.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+  </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtGes/OGD_Rettungssanitaeter.csv">Rettungssanitäter Ausbildungsstätten in Oberösterreich</a>
+     <div class="description">http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtGes/OGD_Rettungssanitaeter.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtStat/Gemeindekennzahlen_2015_OGD.csv">Finanzgebarung der Gemeinden in Oberösterreich</a>
+     <div class="description">http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtStat/Gemeindekennzahlen_2015_OGD.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.linz.gv.at/katalog/kultur/bildung/pflichtschulen/sonderschule/2010/SOSHL_2010.csv">Sonderschulen</a>
+     <div class="description">http://data.linz.gv.at/katalog/kultur/bildung/pflichtschulen/sonderschule/2010/SOSHL_2010.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://open-data.noe.gv.at/ogd-data/RU2/noe_pop_sex_2011-2016_lau2.csv">Bevölkerung nach Geschlecht und Gemeinden</a>
+     <div class="description">http://open-data.noe.gv.at/ogd-data/RU2/noe_pop_sex_2011-2016_lau2.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+  </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://gis.tirol.gv.at/ogd/arbeit/BESCH_OENACE_2013.csv">Beschäftigte nach Wirtschaftsklassen in Tirol</a>
+     <div class="description">https://gis.tirol.gv.at/ogd/arbeit/BESCH_OENACE_2013.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui pink label">
+                  Incorrect GeoNames labels
+                </div>
+     </div>
+  </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.linz.gv.at/katalog/stadt/gebaeude/ueberwiegende_nutzung/2009/tgenutzg_2009.csv">Überwiegende Nutzung der Gebäude</a>
+     <div class="description">http://data.linz.gv.at/katalog/stadt/gebaeude/ueberwiegende_nutzung/2009/tgenutzg_2009.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">Sub-district labels of city are not present in knowledge graph</div>
+
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://www.wien.gv.at/statistik/ogd/w03-accountsexpendituresectors-vie.csv">Finanzgebarung der Stadt Wien: Bereich Ausgaben Zeitreihe Wien</a>
+     <div class="description">https://www.wien.gv.at/statistik/ogd/w03-accountsexpendituresectors-vie.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+  </div>
+ </div>
+
+
+<h2>govdata.de</h2>
+
+<div class="ui relaxed divided list">
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://www.offenesdatenportal.de/dataset/f0605fd2-e4cb-4201-b8c8-d9c8dd1840f7/resource/319cc1b7-516e-43da-ae00-5b0ca206f17c/download/einwohner2014.csv">Kreis Kleve: Einwohnerstatistik im Kreis Kleve 2014</a>
+     <div class="description">https://www.offenesdatenportal.de/dataset/f0605fd2-e4cb-4201-b8c8-d9c8dd1840f7/resource/319cc1b7-516e-43da-ae00-5b0ca206f17c/download/einwohner2014.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">District names are embedded in text</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://offenedaten-koeln.de/sites/default/files/2017_Wahlgebaeude_LTW_Koeln.csv">Stadt Köln: Wahlgebaeunde Koeln Landtagswahl 2017</a>
+     <div class="description">https://offenedaten-koeln.de/sites/default/files/2017_Wahlgebaeude_LTW_Koeln.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">Addresses use abbreviations, e.g., "Str." for "Straße"</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://wahlen.kdvz-frechen.de/kdvz/bw2005/05358036/html5/Bundestagswahl6.csv">D15 Bundestagswahlen Linnich</a>
+     <div class="description">http://wahlen.kdvz-frechen.de/kdvz/bw2005/05358036/html5/Bundestagswahl6.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">District names are embedded in text</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat259-2013_20161121.csv">D08 Familien nach Größe Gemeinde Kreuzau</a>
+     <div class="description">http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat259-2013_20161121.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui pink label">
+                  Incorrect GeoNames labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://www.landesdatenbank.nrw.de/link/tabelleDownload/22111-06iz.csv">NRW: Bruttoausgaben der Sozialhilfe an Leistungsberechtigte nach Ort der Leistungserbringung, Art der Hilfen (32) sowie des Trägers - kreisfreie Städte und Kreise - Jahr</a>
+     <div class="description">https://www.landesdatenbank.nrw.de/link/tabelleDownload/22111-06iz.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">City/region names are embedded in text and uses abbreviations</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://opendata.meerbusch.de/dataset/8c216129-2044-496b-be06-dd886ea5eb3a/resource/c3e27d1a-ede4-4f71-91c5-887a4a19f343/download/bevolkerungsbewegung-in-osterath-ab-2010.csv">Bevölkerungsbewegung nach Stadtteilen</a>
+     <div class="description">https://opendata.meerbusch.de/dataset/8c216129-2044-496b-be06-dd886ea5eb3a/resource/c3e27d1a-ede4-4f71-91c5-887a4a19f343/download/bevolkerungsbewegung-in-osterath-ab-2010.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">A single value in a column, no other context.</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.kdvz-frechen.de/sites/default/files/Gewerbe_Titz_final.csv">D16 Gewerbeanmeldungen Gemeinde Titz</a>
+     <div class="description">http://offenedaten.kdvz-frechen.de/sites/default/files/Gewerbe_Titz_final.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui violet label">
+                  Incorrect OSM labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat287-2010_20161121.csv">D07 Familien mit Anzahl Kinder Gemeinde Merzenich</a>
+     <div class="description">http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat287-2010_20161121.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui pink label">
+                  Incorrect GeoNames labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://www.stadt-koeln.de/wahlen/verbundwahl_2014/Europawahl5.csv">Stadt Köln: Datensätze zur Verbundwahl 2014</a>
+     <div class="description">http://www.stadt-koeln.de/wahlen/verbundwahl_2014/Europawahl5.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui red label">
+                  Not assigned
+                </div>
+                <div class="description">District names are embedded in text</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat429-2011_20161121.csv">D08 Familien nach Größe Stadt Wesseling</a>
+     <div class="description">http://offenedaten.kdvz-frechen.de/sites/default/files/EWO_990_sim_OpDat429-2011_20161121.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+ </div>
+
+<h2>offenedaten.de</h2>
+<div class="ui relaxed divided list">
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.frankfurt.de/dataset/ba3f9a63-66ae-4d2b-995d-4a662960dbfb/resource/c3451694-dbcd-4586-83da-93ffc56ef995/download/bw2017zweitstadtteile.csv">Bundestagswahl 2017 Ergebnisse in Frankfurt am Main</a>
+     <div class="description">http://offenedaten.frankfurt.de/dataset/ba3f9a63-66ae-4d2b-995d-4a662960dbfb/resource/c3451694-dbcd-4586-83da-93ffc56ef995/download/bw2017zweitstadtteile.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui pink label">
+                  Incorrect GeoNames labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="description">Uses district names such as "Altstadt" and "Innenstadt" which are mapped incorrectly.</div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://www.berlin.de/daten/liste-der-vornamen-2014/mitte.csv">Liste der häufigen Vornamen 2014</a>
+     <div class="description">http://www.berlin.de/daten/liste-der-vornamen-2014/mitte.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/355e215b-d36e-4167-bb2d-38920f9465e8/Tageskost.csv">Messergebnisse zur Radioaktivität in: Tageskost (27.09.2016)</a>
+     <div class="description">http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/355e215b-d36e-4167-bb2d-38920f9465e8/Tageskost.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://geo.sv.rostock.de/download/opendata/landtagswahl_2016/landtagswahl_2016_ergebnisse.csv">Landtagswahl 2016</a>
+     <div class="description">https://geo.sv.rostock.de/download/opendata/landtagswahl_2016/landtagswahl_2016_ergebnisse.csv</div>
+                <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/59136f68-0d4e-425f-b572-167122e3be20/Sea_Gold_Rotbarschfilet.csv">Messergebnisse zur Radioaktivität in: Sea Gold Rotbarschfilet (27.02.2013)</a>
+     <div class="description">http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/59136f68-0d4e-425f-b572-167122e3be20/Sea_Gold_Rotbarschfilet.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/53fa3af4-ab19-433e-a9ac-c2cc871469e0/Trinkwasser.csv">Messergebnisse zur Radioaktivität in: Trinkwasser (21.06.2017)</a>
+     <div class="description">http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/53fa3af4-ab19-433e-a9ac-c2cc871469e0/Trinkwasser.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://offenedaten.frankfurt.de/dataset/88fd017f-94c1-418e-8468-ed11770eedfe/resource/b2e28995-ad55-4df4-a26d-b91342576ff2/download/obr162016bewerberinnen.csv">Wahl zum Ortsbeirat 16 | 2016</a>
+     <div class="description">http://offenedaten.frankfurt.de/dataset/88fd017f-94c1-418e-8468-ed11770eedfe/resource/b2e28995-ad55-4df4-a26d-b91342576ff2/download/obr162016bewerberinnen.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/https://www.offenesdatenportal.de/dataset/96001940-55f6-4267-a36c-a30ebe917e3d/resource/2a9da541-9b78-48b9-9bdb-3c30e2a99dfb/download/btw-2017-ergebnis-stadt-krefeld.csv">Bundestagswahlergebnisse 2017 Stadt Krefeld</a>
+     <div class="description">https://www.offenesdatenportal.de/dataset/96001940-55f6-4267-a36c-a30ebe917e3d/resource/2a9da541-9b78-48b9-9bdb-3c30e2a99dfb/download/btw-2017-ergebnis-stadt-krefeld.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui violet label">
+                  Incorrect OSM labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://www.statistik-bremen.de/tabellen/kleinraum/stadt_ottab/ST135.csv">Stadtteil Mitte - Bremen Kleinräumig</a>
+     <div class="description">http://www.statistik-bremen.de/tabellen/kleinraum/stadt_ottab/ST135.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/bf44aafa-1339-465a-b7d6-060ed75e634b/Oberflaechenwasser.csv">Messergebnisse zur Radioaktivität in: Oberflächenwasser (25.04.2016)</a>
+     <div class="description">http://daten.transparenz.hamburg.de/Dataport.HmbTG.ZS.Webservice.GetRessource100/GetRessource100.svc/bf44aafa-1339-465a-b7d6-060ed75e634b/Oberflaechenwasser.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+ </div>
+
+<h2>opendataportal.at</h2>
+ <div class="ui relaxed divided list">
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.wu.ac.at/portal/dataset/81738773-04d9-4d6c-860a-c6d7cdf32932/resource/c0200103-f6fc-4dcf-b14d-b74f60b6e81a/download/allcoursesandorgid12s.csv">Mapping of Courses and Organizations during SS12 at WU Vienna</a>
+     <div class="description">http://data.wu.ac.at/portal/dataset/81738773-04d9-4d6c-860a-c6d7cdf32932/resource/c0200103-f6fc-4dcf-b14d-b74f60b6e81a/download/allcoursesandorgid12s.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://www.win2day.at/download/lo_1998.csv">Lotto 6 aus 45 Zahlen und Quoten 1986 bis 2013</a>
+     <div class="description">http://www.win2day.at/download/lo_1998.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.opendataportal.at/dataset/fef948d8-483e-4dc5-928a-33f744115966/resource/00339813-1d71-4d0a-917d-bfe1d417ab64/download/ibmlokationen201706.csv">Lokationen / Geschäftsstellen und Standorte IBM</a>
+     <div class="description">http://data.opendataportal.at/dataset/fef948d8-483e-4dc5-928a-33f744115966/resource/00339813-1d71-4d0a-917d-bfe1d417ab64/download/ibmlokationen201706.csv</div>
+                 <div class="ui green label">
+                  Correct column labels
+                </div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui violet label">
+                  Incorrect OSM labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.wu.ac.at/portal/dataset/79015497-df60-41c0-95f0-bcd728e543b3/resource/d9d3aafb-bac7-41fc-956d-4474c0f75037/download/allcoursesandevents05s.csv">All Course-Events during SS05 at WU Vienna</a>
+     <div class="description">http://data.wu.ac.at/portal/dataset/79015497-df60-41c0-95f0-bcd728e543b3/resource/d9d3aafb-bac7-41fc-956d-4474c0f75037/download/allcoursesandevents05s.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://wko.at/statistik/opendata/sm/ogd_mgstat_sm_s11_bld_sp6_rf.csv">Anzahl der Spartenmitglieder der Sparte Tourismus und Freizeitwirtschaft insgesamt (aktiv + ruhend) nach Bundesland und Rechtsform ab 2001</a>
+     <div class="description">http://wko.at/statistik/opendata/sm/ogd_mgstat_sm_s11_bld_sp6_rf.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.wu.ac.at/portal/dataset/812a45f5-3f69-457a-b496-dbd598456829/resource/bfe6cda0-258f-47b2-876d-2913e5459a66/download/allcoursesandevents15w.csv">All Course-Events during WS15 at WU Vienna</a>
+     <div class="description">http://data.wu.ac.at/portal/dataset/812a45f5-3f69-457a-b496-dbd598456829/resource/bfe6cda0-258f-47b2-876d-2913e5459a66/download/allcoursesandevents15w.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://wko.at/statistik/opendata/ogd_grstat_anzahl_ng_1.csv">Anzahl der Unternehmensneugründungen nach Bundesland ab 1993</a>
+     <div class="description">http://wko.at/statistik/opendata/ogd_grstat_anzahl_ng_1.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://www.win2day.at/download/lo_2009.csv">Lotto 6 aus 45 Zahlen und Quoten 1986 bis 2013</a>
+     <div class="description">http://www.win2day.at/download/lo_2009.csv</div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.wu.ac.at/portal/dataset/3bf967d9-b3ba-445b-b2f8-5c4848203ace/resource/5f8c11e2-db13-49e3-b544-acb4db7d7aff/download/allcourses12s.csv">All Courses during SS12 at WU Vienna</a>
+     <div class="description">http://data.wu.ac.at/portal/dataset/3bf967d9-b3ba-445b-b2f8-5c4848203ace/resource/5f8c11e2-db13-49e3-b544-acb4db7d7aff/download/allcourses12s.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+  <div class="item">
+  <i class="large file middle aligned icon"></i>
+    <div class="content">
+      <a class="header" href="eswc/http://data.opendataportal.at/dataset/aa9d7108-4bbf-4db0-818e-01dec167e36b/resource/08e94fdf-0a82-461e-a214-ac89856a182c/download/regionalentwicklungschutzhuettenstmkliste2012.csv">Alpine Schutzhütten Steiermark</a>
+     <div class="description">http://data.opendataportal.at/dataset/aa9d7108-4bbf-4db0-818e-01dec167e36b/resource/08e94fdf-0a82-461e-a214-ac89856a182c/download/regionalentwicklungschutzhuettenstmkliste2012.csv</div>
+                <div class="ui blue label">
+                  Correct metadata labels
+                </div>
+                <div class="ui purple label">
+                  Incorrect metadata labels
+                </div>
+                <div class="ui black label">
+                  No geo-spatial data
+                </div>
+     </div>
+   </div>
+ </div>
+
+        </p>
+    </div>
+
+
+</div>
+{% endblock %}
+
+
+{% block script %}
+    $('progress').progress();
+{% endblock %}

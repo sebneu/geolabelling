@@ -272,6 +272,19 @@ def preview():
     return jsonify({'data': render_template('preview_table.jinja', table=res), 'url': res['url'], 'portal': res['portal']})
 
 
+@ui.route('/eswc', methods=['GET'])
+def eswc():
+    return render("eswc.jinja")
+
+
+@ui.route('/eswc/<path:url>', methods=['GET'])
+def eswc_view(url):
+    es_search = current_app.config['ELASTICSEARCH']
+    doc = es_search.get(url, columns=False)
+    res = search_apis.format_table(doc=doc, locationsearch=current_app.config['LOCATION_SEARCH'], row_cutoff=False)
+    return render("eswc/table_view.jinja", {'data': render_template('preview_table.jinja', table=res), 'locations': res['locations'], 'url': res['url'], 'title': res['title'], 'portal': res['portal'], 'publisher': res['publisher']})
+
+
 @ui.route('/geotagging', methods=['GET'])
 def geotagging():
     return render("geolocation.jinja")
