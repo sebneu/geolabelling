@@ -1,7 +1,35 @@
 import os
 import subprocess
 import csv
+import json
 
+def from_json(file):
+    with open(file) as f:
+        data = json.load(f)
+
+    with open('out.txt', 'w') as f:
+        for d in data['hits']['hits']:
+            url = d['_id']
+            publisher = d['_source']['dataset']['publisher'].encode('utf-8')
+            title = d['_source']['dataset']['dataset_name'].encode('utf-8')
+            dataset_link = d['_source']['dataset']['dataset_link']
+            portal = d['_source']['portal']['uri']
+
+            t = """
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="eswc/{0}">{1}</a>
+                  <div class="description">{0}</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">{2}</div>
+                  <div class="description"><a href="{3}">{4}</a></div>
+                </div>
+              </div>
+            </div>
+            """.format(url, title, publisher, dataset_link, portal)
+            f.write(t)
 
 def from_csvfiles():
     dir = '/home/neumaier/Documents/odgraph_evaluation/'
@@ -36,3 +64,7 @@ def from_csvfiles():
                 print '   </div>'
 
         print ' </div>'
+
+
+if __name__ == '__main__':
+    from_json('/home/neumaier/Repos/odgraph/local/sampledata/nocolumns_nometadata.json')
