@@ -55,7 +55,7 @@ def index():
     locationsearch = current_app.config['LOCATION_SEARCH']
     search_api = url_for('.search')
     data = {'randomEntities': []}
-    e = locationsearch.get('http://sws.geonames.org/6559171/')
+    e = locationsearch.get('http://sws.geonames.org/3220837/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
