@@ -35,6 +35,9 @@ class LocationSearch:
     def get(self, id):
         return self.geonames.find_one({'_id': id})
 
+    #def getRandomGeoNames(self, count=10):
+    #    return self.geonames.aggregate([{'$sample': {'size': count}}])
+
     def get_osm(self, id):
         return self.osm.find_one({'_id': id})
 
@@ -280,7 +283,7 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
 
 
     def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):

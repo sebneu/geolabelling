@@ -52,7 +52,38 @@ def decode_utf8(string):
 
 @ui.route('/', methods=['GET'])
 def index():
-    return render('index.jinja')
+    locationsearch = current_app.config['LOCATION_SEARCH']
+    search_api = url_for('.search')
+    data = {'randomEntities': []}
+    e = locationsearch.get('http://sws.geonames.org/6559171/')
+    country = locationsearch.get(e['country'])
+    link = search_api + '?' + urllib.urlencode({'l': e['_id']})
+    clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
+    data['randomEntities'].append(
+        {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
+    e = locationsearch.get('http://sws.geonames.org/7871502/')
+    country = locationsearch.get(e['country'])
+    link = search_api + '?' + urllib.urlencode({'l': e['_id']})
+    clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
+    data['randomEntities'].append(
+        {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
+    e = locationsearch.get('http://sws.geonames.org/2769848/')
+    country = locationsearch.get(e['country'])
+    link = search_api + '?' + urllib.urlencode({'l': e['_id']})
+    clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
+    data['randomEntities'].append(
+        {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
+    e = locationsearch.get('http://sws.geonames.org/2842567/')
+    country = locationsearch.get(e['country'])
+    link = search_api + '?' + urllib.urlencode({'l': e['_id']})
+    clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
+    data['randomEntities'].append(
+        {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
+    # TODO get random entities
+    #for e in locationsearch.getRandomGeoNames(4):
+    #
+    #    data['randomEntities'].append({'name': e['name'], 'parents': [{'name': country['name'], 'link': country['_id'], 'search': e['_id']}]})
+    return render('index.jinja', data=data)
 
 
 def try_page(var):

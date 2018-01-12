@@ -46,7 +46,7 @@
         <header id="header" class="ui vertical segment">
             <h1 class="ui header fifteen wide column">
                 <div class="content">
-                    Spatio-temporal Search over Open Data
+                    Geo-search over Open Data
                     <div class="sub header"></div>
                 </div>
                 <img  class="ui small image" style="width: auto; height: auto;max-width: 120px;max-height: 70px" src="{{ url_for('.static', filename='img/wu.png')}}">
@@ -57,7 +57,8 @@
         <nav id="mainnav" class="ui  fluid secondary stackable pointing icon menu " >
             {% set navigation_bar = [
                     ('ui.index','search', 'Search', 'search'),
-                    ('ui.eswc','eswc', "ESWC'18", 'eswc')
+                    ('ui.eswc','eswc', "ESWC'18", 'eswc'),
+                    ('ui.about','about', 'About', 'about')
                 ]
             -%}
                 {#,

@@ -212,6 +212,29 @@
             </div>
         </div>
         {% endif %}
+
+    {% else %}
+        </div>
+        {% if "randomEntities" in data %}
+        <div class="ui segment">
+            <h3>Example geo-entity queries</h3>
+            <div class="ui four column grid">
+                {% for entity in data.randomEntities %}
+                <div class="column">
+                    <div class="ui fluid card">
+                        <div class="content">
+                            <a class="header" href="{{entity.link}}">{{entity.name}}</a>
+                            <div class="meta">
+                              {% set last = entity.parents|last %}
+                              <a href="{{last.link}}">{{last.name}}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     {% endif %}
 </div>
 
