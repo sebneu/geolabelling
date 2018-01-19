@@ -24,7 +24,6 @@ class LocationSearch:
         self.keywords = db.keywords
         self.nuts = db.nuts
 
-
     def format_entities(self, e):
         if e == '' or not e:
             return ''
@@ -37,7 +36,7 @@ class LocationSearch:
     def get(self, id):
         return self.geonames.find_one({'_id': id})
 
-    #def getRandomGeoNames(self, count=10):
+    # def getRandomGeoNames(self, count=10):
     #    return self.geonames.aggregate([{'$sample': {'size': count}}])
 
     def get_osm(self, id):
@@ -66,9 +65,9 @@ class LocationSearch:
 
     def get_by_substring(self, q, search_api, limit=10):
         results = []
-        #for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
+        # for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
 
-        cursor = self.geonames.find({'$text': { '$search': q}, 'datasets': True}, {'score': {'$meta': "textScore" }})
+        cursor = self.geonames.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
         cursor.limit(limit)
 
@@ -88,11 +87,10 @@ class LocationSearch:
             results.append(tmp)
         return results
 
-
     def get_osm_names_by_substring(self, q, search_api, limit=10):
         results = []
 
-        cursor = self.osm.find({'$text': {'$search': q }, 'datasets': True}, {'score': {'$meta': "textScore"}})
+        cursor = self.osm.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
         cursor.limit(limit)
 
@@ -109,7 +107,6 @@ class LocationSearch:
                 tmp['description'] = ', '.join(regions)
             results.append(tmp)
         return results
-
 
     def get_postalcodes(self, q, search_api, limit=5):
         results = []
@@ -149,11 +146,9 @@ class LocationSearch:
             results.append(tmp)
         return results
 
-
     def get_country(self, iso):
         country = self.countries.find_one({'iso': iso})
         return country
-
 
     def get_parents(self, id, parents=None):
         current = self.geonames.find_one({"_id": id})
@@ -198,13 +193,16 @@ class ESClient(object):
             include.append("column.*")
         if not rows:
             exclude.append("row.*")
-        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
+                          _source_include=include)
         return res
 
     def get_triples(self, url, location_search):
-        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations', 'dataset.*']
+        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations',
+                   'dataset.*']
         exclude = ['row.*']
-        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
+                          _source_include=include)
 
         # convert column to RDF
         g = rdflib.Graph()
@@ -222,16 +220,37 @@ class ESClient(object):
                             g.add((rdflib.URIRef(entity), h_prop, rdflib.Literal(v)))
         return g.serialize(format='nt')
 
-
-    def get_urls(self, portal=None):
+    def get_urls(self, portal=None, columnlabels='false'):
         if portal:
             p = {"nested": {"path": "portal", "query": {"term": {"portal.id": portal}}}}
         else:
-            p = {"match_all" : {}}
-        q = {
-            "_source": "_id",
-            "query": p
-        }
+            p = {"match_all": {}}
+
+        if columnlabels == 'true':
+            q = {
+                "_source": "_id",
+                "query": {
+                    "bool": {
+                        "must": [
+                            p, {
+                                "nested": {
+                                    "path": "column",
+                                    "query": {
+                                        "exists": {
+                                            "field": "column.entities"
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        else:
+            q = {
+                "_source": "_id",
+                "query": p
+            }
 
         limit = 100
         scroll = "5m"
@@ -250,7 +269,6 @@ class ESClient(object):
 
             for l in urls:
                 yield l['_id']
-
 
     def exists(self, url):
         res = self.es.exists(index=self.indexName, doc_type='table', id=url)
@@ -277,13 +295,14 @@ class ESClient(object):
         }
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-
-    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
+    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False,
+                              temporal_constraints=None):
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
+                        "temporal_end"],
             "query": {
                 "bool": {
                     tmp: [
@@ -338,14 +357,14 @@ class ESClient(object):
             })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
 
-
     def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
+                        "temporal_end"],
             "query": {
                 "bool": {
                     tmp: [
@@ -388,7 +407,8 @@ class ESClient(object):
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start", "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
+                        "temporal_end"],
             "query": {
                 "bool": {
                     "should": [
@@ -476,8 +496,9 @@ class ESClient(object):
         return q
 
 
-
 MAX_STRING_LENGTH = 20
+
+
 def _get_doc_headers(doc, row_cutoff):
     headers = []
     if 'column' in doc['_source']:
@@ -517,7 +538,9 @@ def format_results(results, row_cutoff, dataset=False):
 
 
 def format_table(doc, row_cutoff, locationsearch, max_rows=500):
-    d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'], "publisher": doc['_source']['dataset'].get('publisher', ''), "title": doc['_source']['dataset'].get('dataset_name', ''), 'rows': []}
+    d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'],
+         "publisher": doc['_source']['dataset'].get('publisher', ''),
+         "title": doc['_source']['dataset'].get('dataset_name', ''), 'rows': []}
     d['headers'] = _get_doc_headers(doc, row_cutoff)
 
     d['locations'] = []
@@ -532,7 +555,7 @@ def format_table(doc, row_cutoff, locationsearch, max_rows=500):
         for row_no, row in enumerate(rows):
             d_row = []
             for i, e in enumerate([c[:MAX_STRING_LENGTH] + '...' if len(c) > MAX_STRING_LENGTH and row_cutoff else c
-                              for c in row['values']['exact']]):
+                                   for c in row['values']['exact']]):
                 entry = {'value': e}
 
                 if 'entities' in row:
