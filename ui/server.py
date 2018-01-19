@@ -10,6 +10,8 @@ from utils.error_handler import ErrorHandler as eh, ErrorHandler
 from tornado.wsgi import WSGIContainer
 from ui.rest_api import api
 from ui.ui_blueprint import ui
+from ui.export_namespace import rdf_ns
+from ui.export_namespace import get_ns
 
 import argparse
 
@@ -109,10 +111,12 @@ def start():
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
     app.config['ELASTICSEARCH'] = search_apis.ESClient(conf=config)
 
-    blueprint = Blueprint('api', __name__, url_prefix='/csvengine/api/v1')
+    blueprint = Blueprint('api', __name__, url_prefix='/odgraph/api/v1')
     api.init_app(blueprint)
-    app.register_blueprint(blueprint)
+    api.add_namespace(get_ns)
+    api.add_namespace(rdf_ns)
 
+    app.register_blueprint(blueprint)
     app.register_blueprint(ui, url_prefix='/odgraph')
 
     app.wsgi_app = ReverseProxied(app.wsgi_app)

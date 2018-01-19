@@ -341,7 +341,7 @@ def geotagging_service():
 
 
 @ui.route('/api', methods=['GET'])
-def apispec():
+def api():
     return render('apiui.jinja')
 
 

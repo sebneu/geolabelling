@@ -4,20 +4,22 @@
 import logging
 import traceback
 
-
 log = logging.getLogger(__name__)
 
-
 from flask_restplus import Api
+
 api = Api(version='1.0', title='Open Data Graph API',
           description='APIs for the available services')
+
 
 @api.errorhandler
 def default_error_handler(error):
     '''Default error handler'''
     return {'message': str(error)}, getattr(error, 'code', 500)
 
+
 from datetime import datetime
+
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -25,11 +27,13 @@ def json_serial(obj):
     if isinstance(obj, datetime):
         serial = obj.isoformat()
         return serial
-    raise TypeError ("Type not serializable")
+    raise TypeError("Type not serializable")
+
 
 from math import ceil
-class Pagination(object):
 
+
+class Pagination(object):
     def __init__(self, page, per_page, total_count):
         self.page = page
         self.per_page = per_page
@@ -52,9 +56,8 @@ class Pagination(object):
         last = 0
         for num in xrange(1, self.pages + 1):
             if num <= left_edge or \
-               (num > self.page - left_current - 1 and \
-                num < self.page + right_current) or \
-               num > self.pages - right_edge:
+                    (self.page - left_current - 1 < num < self.page + right_current) or \
+                            num > self.pages - right_edge:
                 if last + 1 != num:
                     yield None
                 yield num

@@ -10,6 +10,8 @@ from elasticsearch import Elasticsearch
 from openstreetmap.osm_inserter import get_geonames_url
 from ui.utils import mongo_collections_utils
 
+import rdflib
+
 
 class LocationSearch:
     def __init__(self, host, port):
@@ -198,6 +200,57 @@ class ESClient(object):
             exclude.append("row.*")
         res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
         return res
+
+    def get_triples(self, url, location_search):
+        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations', 'dataset.*']
+        exclude = ['row.*']
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude, _source_include=include)
+
+        # convert column to RDF
+        g = rdflib.Graph()
+        if 'column' in res['_source']:
+            for i, c in enumerate(res['_source']['column']):
+                if 'entities' in c:
+                    if 'header' in c and c['header'][0]['exact'][0]:
+                        h = c['header'][0]['exact'][0].replace(' ', '_')
+                    else:
+                        h = 'col' + str(i)
+                    h_prop = rdflib.URIRef(url + '#' + h)
+                    for e, v in zip(c['entities'], c['values']['exact']):
+                        if e:
+                            entity = location_search.format_entities(e)
+                            g.add((rdflib.URIRef(entity), h_prop, rdflib.Literal(v)))
+        return g.serialize(format='nt')
+
+
+    def get_urls(self, portal=None):
+        if portal:
+            p = {"nested": {"path": "portal", "query": {"term": {"portal.id": portal}}}}
+        else:
+            p = {"match_all" : {}}
+        q = {
+            "_source": "_id",
+            "query": p
+        }
+
+        limit = 100
+        scroll = "5m"
+        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll=scroll, timeout='30s')
+
+        while True:
+            if '_scroll_id' in res:
+                scroll_id = res['_scroll_id']
+            else:
+                break
+            res = self.es.scroll(scroll_id=scroll_id, scroll=scroll)
+            urls = res['hits']['hits']
+
+            if len(urls) == 0:
+                break
+
+            for l in urls:
+                yield l['_id']
+
 
     def exists(self, url):
         res = self.es.exists(index=self.indexName, doc_type='table', id=url)
