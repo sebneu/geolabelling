@@ -11,7 +11,7 @@ urls_parser = api.parser()
 urls_parser.add_argument('columnlabels', type=inputs.boolean, default=False)
 
 
-@api.expect(urls_parser)
+@get_ns.expect(urls_parser)
 @get_ns.route('/urls')
 @get_ns.doc(params={'portal': 'filter by urls from portal'}, description="Returns all indexed urls")
 class GetURLs(Resource):
@@ -23,10 +23,11 @@ class GetURLs(Resource):
         return jsonify(list(urls))
 
 
-@get_ns.route('/get/<path:url>')
+@get_ns.route('/get')
 @get_ns.doc(params={'url': "The CSV's URL"}, description="Get an indexed CSV by its URL")
 class GetCSV(Resource):
-    def get(self, url):
+    def get(self):
+        url = request.args.get("url")
         es_search = current_app.config['ELASTICSEARCH']
         return es_search.get(url)
 
@@ -34,10 +35,11 @@ class GetCSV(Resource):
 
 
 
-@rdf_ns.route('/labels/<path:url>')
+@rdf_ns.route('/labels')
 @rdf_ns.doc(params={'url': "The CSV's URL"}, description="Returns the geo-entities of an indexed CSV as RDF")
 class GetCSVTriples(Resource):
-    def get(self, url):
+    def get(self):
+        url = request.args.get("url")
         es_search = current_app.config['ELASTICSEARCH']
         location_search = current_app.config['LOCATION_SEARCH']
         nt_file = es_search.get_triples(url, location_search=location_search)
