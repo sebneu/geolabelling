@@ -220,13 +220,13 @@ class ESClient(object):
                             g.add((rdflib.URIRef(entity), h_prop, rdflib.Literal(v)))
         return g.serialize(format='nt')
 
-    def get_urls(self, portal=None, columnlabels='false'):
+    def get_urls(self, portal=None, columnlabels='none'):
         if portal:
             p = {"nested": {"path": "portal", "query": {"term": {"portal.id": portal}}}}
         else:
             p = {"match_all": {}}
 
-        if columnlabels == 'true':
+        if columnlabels == 'all':
             q = {
                 "_source": "_id",
                 "query": {
@@ -246,6 +246,28 @@ class ESClient(object):
                     }
                 }
             }
+        elif columnlabels == 'geonames':
+            q = {
+                "_source": "_id",
+                "query": {
+                    "bool": {
+                        "must": [
+                            p, {
+                                "nested": {
+                                    "path": "column",
+                                    "query": {
+                                        "prefix": {
+                                            "column.entities": "http://sws.geonames.org/"
+                                        }
+
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+
         else:
             q = {
                 "_source": "_id",

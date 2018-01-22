@@ -8,8 +8,7 @@ rdf_ns = api.namespace('rdf', description='Operations to convert the data to RDF
 
 
 urls_parser = api.parser()
-urls_parser.add_argument('columnlabels', type=inputs.boolean, default=False)
-
+urls_parser.add_argument('columnlabels', choices=['all', 'geonames', 'none'], default='all')
 
 @get_ns.expect(urls_parser)
 @get_ns.route('/urls')
