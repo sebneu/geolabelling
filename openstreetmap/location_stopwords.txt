@@ -1,6 +1,7 @@
+Kreisfreie Stadt
+Regierungsbezirk
 Politischer Bezirk
 Stadt
 Gemeindebezirk
 Gemeinde
-Kreisfreie Stadt
-Regierungsbezirk
+pagasts

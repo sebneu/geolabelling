@@ -2,7 +2,7 @@ import sys
 import argparse
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, time
 
 import pymongo
 from pymongo import MongoClient
@@ -43,8 +43,10 @@ def countries_to_mongo(client, args):
             countries.insert(entry)
 
 
-def get_subregions(region_id, region_name):
+def get_subregions(region_id, region_name, waiting_time=1):
     sub_g = rdflib.Graph()
+    # waiting time to reduce heavy use
+    time.sleep(waiting_time)
     sub_g.parse(region_id + "contains.rdf")
 
     all_childs = list(sub_g.subjects(GN.parentFeature, rdflib.URIRef(region_id)))
@@ -52,7 +54,7 @@ def get_subregions(region_id, region_name):
         return []
     elif len(all_childs) == 1:
         c_name = sub_g.value(subject=all_childs[0], predicate=GN.name)
-        subr = get_subregions(all_childs[0], c_name)
+        subr = get_subregions(all_childs[0], c_name, waiting_time=waiting_time)
         if subr:
             return subr
         else:
@@ -62,7 +64,7 @@ def get_subregions(region_id, region_name):
         for c in all_childs:
             c_name = sub_g.value(subject=c, predicate=GN.name)
             if c_name == region_name:
-                subr = get_subregions(c, c_name)
+                subr = get_subregions(c, c_name, waiting_time=waiting_time)
                 if subr:
                     res += subr
                 else:
@@ -185,44 +187,68 @@ def postalcode_csv_to_mongo(client, args):
             postalcodes_collection.insert(entry)
 
 
+def wikidata_osmrelations_to_geonames(client, args):
+    db = client.geostore
+
+    s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+    statement = '''
+    SELECT ?s ?o ?g WHERE {
+          ?s wdt:P402 ?o.
+          ?s wdt:P1566 ?g.
+        }
+    '''
+    result = s.query(statement)
+    for row in result.fetchone():
+        wikidata_id = row[0].value.strip()
+        osm_relation = row[1].value.strip()
+        geon = 'http://sws.geonames.org/' + row[2].value + '/'
+
+        geon_entry = db.geonames.find_one({'_id': geon})
+        if geon_entry:
+            db.geonames.update_one({'_id': geon}, {'$set': {'osm_relation': osm_relation, 'wikidata': wikidata_id}})
+
+
 def wikidata_postalcodes_to_geonames(client, args):
     db = client.geostore
     postalcodes = db.postalcodes
 
     s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
     statement = '''
-    SELECT ?o ?g ?country_id WHERE {
+    SELECT ?s ?o ?g WHERE {
       ?s wdt:P281 ?o.
       ?s wdt:P1566 ?g.
-      ?s wdt:P17 ?country.
-      ?country wdt:P1566 ?country_id
     }
     '''
     result = s.query(statement)
     for row in result.fetchone():
-        postalcode = row[0].value.strip()
-        geon = 'http://sws.geonames.org/' + row[1].value + '/'
-        geon_country = 'http://sws.geonames.org/' + row[2].value + '/'
+        wikidata_id = row[0].value.strip()
+        postalcode = row[1].value.strip()
+        geon = 'http://sws.geonames.org/' + row[2].value + '/'
 
-        entry = postalcodes.find_one({'_id': postalcode})
-        if not entry:
-            entry = {'_id': postalcode, 'countries': []}
+        geon_entry = db.geonames.find_one({'_id': geon})
+        if geon_entry and 'country' in geon_entry:
+            db.geonames.update_one({'_id': geon}, {'$set': {'postalcode': postalcode}})
 
-        country_found = None
-        for c in entry['countries']:
-            if c['country'] == geon_country:
-                country_found = c
-                break
+            geon_country = geon_entry['country']
+            entry = postalcodes.find_one({'_id': postalcode})
+            if not entry:
+                entry = {'_id': postalcode, 'countries': []}
 
-        if not country_found:
-            country_found = {'country': geon_country, 'region': geon}
-            entry['countries'].append(country_found)
+            country_found = None
+            for c in entry['countries']:
+                if c['country'] == geon_country:
+                    country_found = c
+                    break
 
-        if not 'geonames' in country_found:
-            country_found['geonames'] = []
-        if geon not in country_found['geonames']:
-            country_found['geonames'].append(geon)
-        postalcodes.update_one({'_id': entry['_id']}, {'$set': {'countries': entry['countries']}}, upsert=True)
+            if not country_found:
+                country_found = {'country': geon_country, 'region': geon}
+                entry['countries'].append(country_found)
+
+            if not 'geonames' in country_found:
+                country_found['geonames'] = []
+            if geon not in country_found['geonames']:
+                country_found['geonames'].append(geon)
+            postalcodes.update_one({'_id': entry['_id']}, {'$set': {'countries': entry['countries']}}, upsert=True)
 
 
 def get_lowest_common_ancestor(client, geonames_ids):
@@ -379,21 +405,28 @@ def wikidata_nuts_to_geonames(client, args):
 
     s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
     statement = '''
-    SELECT ?o ?g WHERE {
+    SELECT ?s ?o ?g WHERE {
       ?s wdt:P605 ?o.
       ?s wdt:P1566 ?g
     }
     '''
     result = s.query(statement)
     for row in result.fetchone():
-        nuts_code = row[0].value.strip()
-        geon = 'http://sws.geonames.org/' + row[1].value + '/'
+        wikidata_id = row[0].value.strip()
+        nuts_code = row[1].value.strip()
+        geon = 'http://sws.geonames.org/' + row[2].value + '/'
 
         entry = nuts.find_one({'_id': nuts_code})
         if entry:
-            nuts.update_one({'_id': nuts_code}, {'$set': {'geonames': geon}})
+            nuts.update_one({'_id': nuts_code}, {'$set': {'geonames': geon, 'wikidata': wikidata_id}})
         else:
             logging.debug('NUTS entry not in DB: ' + str(nuts_code))
+            geon_entry = db.geonames.find_one({'_id': geon})
+            if geon_entry:
+                if 'country' in geon_entry:
+                    nuts.insert_one({'_id': nuts_code, 'geonames': geon, 'wikidata': wikidata_id, 'name': geon_entry['name'], 'country': geon_entry['country']})
+                else:
+                    nuts.insert_one({'_id': nuts_code, 'geonames': geon, 'wikidata': wikidata_id, 'name': geon_entry['name']})
 
 
 def wikidata_links_to_mongo(client, args):
@@ -449,6 +482,9 @@ if __name__ == "__main__":
     subparser = subparsers.add_parser('wikidata-postalcodes')
     subparser.set_defaults(func=wikidata_postalcodes_to_geonames)
 
+    subparser = subparsers.add_parser('wikidata-osm')
+    subparser.set_defaults(func=wikidata_osmrelations_to_geonames)
+
     subparser = subparsers.add_parser('countries')
     subparser.set_defaults(func=countries_to_mongo)
 
@@ -467,7 +503,18 @@ if __name__ == "__main__":
         lvl = logging.DEBUG
     else:
         lvl = logging.DEBUG
-    logging.basicConfig(level=lvl, filename=args.logfile, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    logging.basicConfig(level=lvl)
+    rootLogger = logging.getLogger()
+    logFormatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    fileHandler = logging.FileHandler(args.logfile)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+
 
     client = MongoClient(args.host, args.port)
     args.func(client, args)

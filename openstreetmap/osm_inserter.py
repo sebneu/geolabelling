@@ -5,6 +5,7 @@ import os
 import logging
 
 import requests
+import urllib
 import time
 
 from pymongo import MongoClient
@@ -45,6 +46,28 @@ def get_geonames_id(url):
     id = url.split('/')[-2]
     return id
 
+
+def process_eu_countries(client, args):
+    db = client.geostore
+    geonames = db.geonames
+    countries = db.countries
+    directory = args.directory
+
+    for c in countries.find({'continent': 'EU', 'osm_data': {'$exists': False}}):
+        name = c['name'].lower()
+        name = name.replace(' and ', ' ')
+        name = name.replace(' ', '-')
+        url = 'http://download.geofabrik.de/europe/{0}-latest.osm.pbf'.format(name)
+        print url
+        try:
+            testfile = urllib.URLopener()
+            testfile.retrieve(url, os.path.join(directory, '{0}-latest.osm.pbf'.format(name)))
+            countries.update_one({'_id': c['_id']}, {'$set': {'osm_data': url}})
+        except Exception as e:
+            logging.debug('URL not found:' + url + ' - ' + str(e))
+
+
+
 def export_polygons(client, args):
     db = client.geostore
     geonames = db.geonames
@@ -52,29 +75,35 @@ def export_polygons(client, args):
 
     directory = args.directory
     admin_level = args.level
-    country = args.country
-    c_iso = countries.find_one({'_id': country})['iso'].lower()
+    all_c = []
+    if args.country:
+        all_c.append(countries.find_one({'_id': args.country}))
 
-    if not os.path.exists(directory):
-        os.mkdir(directory)
-    c_dir = os.path.join(directory, c_iso)
-    if not os.path.exists(c_dir):
-        os.mkdir(c_dir)
-    lvl_dir = os.path.join(c_dir, str(admin_level))
-    if not os.path.exists(lvl_dir):
-        os.mkdir(lvl_dir)
+    else:
+        for c in countries.find({'continent': 'EU'}):
+            all_c.append(c)
+    for country in all_c:
+        c_iso = country['iso'].lower()
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+        c_dir = os.path.join(directory, c_iso)
+        if not os.path.exists(c_dir):
+            os.mkdir(c_dir)
+        lvl_dir = os.path.join(c_dir, str(admin_level))
+        if not os.path.exists(lvl_dir):
+            os.mkdir(lvl_dir)
 
-    for region in geonames.find({'admin_level': admin_level, 'country': country}):
-        if 'geojson' in region:
-            geojson = region['geojson']
-            g_id = get_geonames_id(region['_id'])
-            write_polygon_to_file(geojson=geojson, filename=os.path.join(lvl_dir, g_id), name=g_id)
+        for region in geonames.find({'admin_level': admin_level, 'country': country['_id']}):
+            if 'geojson' in region:
+                geojson = region['geojson']
+                g_id = get_geonames_id(region['_id'])
+                write_polygon_to_file(geojson=geojson, filename=os.path.join(lvl_dir, g_id), name=g_id)
 
 
 def remove_stopwords(s):
     with open('openstreetmap/location_stopwords.txt') as f:
         for w in f:
-            s = s.replace(w, '')
+            s = s.replace(w.strip(), '')
     return s.strip()
 
 
@@ -111,38 +140,47 @@ def get_polygons(client, args):
     geonames = db.geonames
 
     update = args.update
-    country = args.country
     admin_level = args.level
-    c_iso = countries.find_one({'_id': country})['iso'].lower()
 
-    if update:
-        res = geonames.find({'admin_level': admin_level, 'country': country, 'geojson': {'$exists': False}})
+    all_c = []
+    if args.country:
+        all_c.append(countries.find_one({'_id': args.country}))
     else:
-        res = geonames.find({'admin_level': admin_level, 'country': country})
+        for c in countries.find({'continent': 'EU'}):
+            all_c.append(c)
 
-    for region in res:
-        # waiting time to reduce heavy use
-        time.sleep(1)
+    for c in all_c:
+        country = c['_id']
+        c_iso = c['iso'].lower()
 
-        r_name = region['name']
-        r_name = remove_stopwords(r_name)
-        r_url = u'http://nominatim.openstreetmap.org/search?q={0}&countrycodes={1}&format=json'.format(r_name, c_iso)
+        if update:
+            res = geonames.find({'admin_level': admin_level, 'country': country, 'geojson': {'$exists': False}})
+        else:
+            res = geonames.find({'admin_level': admin_level, 'country': country})
 
-        s = requests.Session()
-        s.headers.update({'referrer': DATA_WU_REFERRER})
-        req = s.get(r_url)
+        for region in res:
+            # waiting time to reduce heavy use
+            time.sleep(1)
 
-        if req.status_code == 200:
-            candidates = req.json()
+            r_name = region['name'].encode('utf-8')
+            r_name = remove_stopwords(r_name)
+            r_url = u'http://nominatim.openstreetmap.org/search?q={0}&countrycodes={1}&format=json'.format(r_name, c_iso)
 
-            osm = get_osm_id(candidates, admin_level)
-            if not osm:
-                osm = get_osm_id(candidates, admin_level+1)
+            s = requests.Session()
+            s.headers.update({'referrer': DATA_WU_REFERRER})
+            req = s.get(r_url)
 
-            if osm:
-                geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm[0], 'geojson': osm[1]}})
-            else:
-                print 'not found:', r_name
+            if req.status_code == 200:
+                candidates = req.json()
+
+                osm = get_osm_id(candidates, admin_level)
+                if not osm:
+                    osm = get_osm_id(candidates, admin_level+1)
+
+                if osm:
+                    geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm[0], 'geojson': osm[1]}})
+                else:
+                    print 'not found:', r_name
 
 
 def read_osm_files(client, args):
@@ -254,16 +292,20 @@ if __name__ == "__main__":
 
     subparsers = parser.add_subparsers()
 
+    subparser = subparsers.add_parser('all-eu-countries')
+    subparser.set_defaults(func=process_eu_countries)
+    subparser.add_argument('--directory', default='poly-exports/osm-export/')
+
     subparser = subparsers.add_parser('poly-export')
     subparser.set_defaults(func=export_polygons)
     subparser.add_argument('--directory', default='poly-exports')
-    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
+    subparser.add_argument('--country')
     subparser.add_argument('--level', type=int, default=8)
 
     subparser = subparsers.add_parser('osm-polygons')
     subparser.set_defaults(func=get_polygons)
-    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
-    subparser.add_argument('--level', type=int, default=8)
+    subparser.add_argument('--country')
+    subparser.add_argument('--level', type=int, default=6)
     subparser.add_argument('--update', action='store_true')
 
     subparser = subparsers.add_parser('insert-osm')
