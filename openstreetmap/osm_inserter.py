@@ -162,9 +162,9 @@ def get_polygons(client, args):
             # waiting time to reduce heavy use
             time.sleep(1)
 
-            r_name = region['name'].encode('utf-8')
+            r_name = region['name']
             r_name = remove_stopwords(r_name)
-            r_url = u'http://nominatim.openstreetmap.org/search?q={0}&countrycodes={1}&format=json'.format(r_name, c_iso)
+            r_url = u'http://nominatim.openstreetmap.org/search?q={0}&countrycodes={1}&format=json'.format(r_name, c_iso).encode('utf-8')
 
             s = requests.Session()
             s.headers.update({'referrer': DATA_WU_REFERRER})
