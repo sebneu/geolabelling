@@ -14,7 +14,7 @@ do
     if [ -d "$POLY_FILES" ]
     then
         OUT_DIR=${BASE}/poly-exports/osm-export/${COUNTRY}/${LEVEL}/
-        mkdir -p OUT_DIR
+        mkdir -p $OUT_DIR
 
         F_COUNT=$(ls -1q $POLY_FILES | wc -l)
         BATCH=100
