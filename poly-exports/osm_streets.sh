@@ -41,8 +41,8 @@ do
             do
                 CMD=$CMD"--bounding-polygon file=$POLY_FILES$filename --write-xml $OUT_DIR$filename.osm "
             done
-            #echo $CMD
-            #eval $CMD
+            echo $CMD
+            eval $CMD
         done
     fi
 done
