@@ -46,6 +46,11 @@ def get_geonames_id(url):
     id = url.split('/')[-2]
     return id
 
+def format_country_name(name):
+    name = name.lower()
+    name = name.replace(' and ', ' ')
+    name = name.replace(' ', '-')
+    return name
 
 def process_eu_countries(client, args):
     db = client.geostore
@@ -54,9 +59,7 @@ def process_eu_countries(client, args):
     directory = args.directory
 
     for c in countries.find({'continent': 'EU', 'osm_data': {'$exists': False}}):
-        name = c['name'].lower()
-        name = name.replace(' and ', ' ')
-        name = name.replace(' ', '-')
+        name = format_country_name(c['name'])
         url = 'http://download.geofabrik.de/europe/{0}-latest.osm.pbf'.format(name)
         print url
         try:
@@ -83,10 +86,10 @@ def export_polygons(client, args):
         for c in countries.find({'continent': 'EU'}):
             all_c.append(c)
     for country in all_c:
-        c_iso = country['iso'].lower()
+        c_name = format_country_name(country['name'])
         if not os.path.exists(directory):
             os.mkdir(directory)
-        c_dir = os.path.join(directory, c_iso)
+        c_dir = os.path.join(directory, c_name)
         if not os.path.exists(c_dir):
             os.mkdir(c_dir)
         lvl_dir = os.path.join(c_dir, str(admin_level))
@@ -300,7 +303,7 @@ if __name__ == "__main__":
     subparser.set_defaults(func=export_polygons)
     subparser.add_argument('--directory', default='poly-exports')
     subparser.add_argument('--country')
-    subparser.add_argument('--level', type=int, default=8)
+    subparser.add_argument('--level', type=int, default=6)
 
     subparser = subparsers.add_parser('osm-polygons')
     subparser.set_defaults(func=get_polygons)
