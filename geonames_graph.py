@@ -2,7 +2,8 @@ import sys
 import argparse
 import logging
 from collections import defaultdict
-from datetime import datetime, time
+from datetime import datetime
+import time
 
 import pymongo
 from pymongo import MongoClient
@@ -89,11 +90,17 @@ def add_city_level_divisions(client, args):
     for c in countries_iter:
         # TODO remove ID
         for region in geonames.find({'country': c['_id'], 'admin_level': 6}):
-            sub_regions = get_subregions(region['_id'], region['name'])
+            try:
+                sub_regions = get_subregions(region['_id'], region['name'])
 
-            for sub_r in sub_regions:
-                geonames.update_one({'_id': sub_r}, {'$set': {'admin_level': 8}})
-
+                for sub_r in sub_regions:
+                    geonames.update_one({'_id': sub_r}, {'$set': {'admin_level': 8}})
+            except Exception as e:
+                msg = "Could not get region: " + region['name'] + ", " + c['name']
+                print msg
+                print str(e)
+                logging.debug(msg)
+                logging.error(e)
 
 
 def add_divisions_to_geonames(client, args):
@@ -492,7 +499,7 @@ if __name__ == "__main__":
     subparser.set_defaults(func=add_divisions_to_geonames)
 
     subparser = subparsers.add_parser('city-divisions')
-    subparser.add_argument('--country', default='http://sws.geonames.org/2921044/')
+    subparser.add_argument('--country')
     subparser.set_defaults(func=add_city_level_divisions)
 
     args = parser.parse_args()
