@@ -144,13 +144,15 @@ def get_polygons(client, args):
 
     update = args.update
     admin_level = args.level
+    skip = args.skip
 
     all_c = []
     if args.country:
         all_c.append(countries.find_one({'_id': args.country}))
     else:
         for c in countries.find({'continent': 'EU'}):
-            all_c.append(c)
+            if c['iso'] not in args.skip:
+                all_c.append(c)
 
     for c in all_c:
         country = c['_id']
@@ -310,6 +312,7 @@ if __name__ == "__main__":
     subparser.add_argument('--country')
     subparser.add_argument('--level', type=int, default=6)
     subparser.add_argument('--update', action='store_true')
+    subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
 
     subparser = subparsers.add_parser('insert-osm')
     subparser.set_defaults(func=read_osm_files)

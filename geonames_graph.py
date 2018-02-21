@@ -88,7 +88,10 @@ def add_city_level_divisions(client, args):
         countries_iter = countries.find()
 
     for c in countries_iter:
-        # TODO remove ID
+        if args.update:
+            if geonames.find_one({'country': c['_id'], 'admin_level': 8}):
+                print 'found admin level 8: ', c['name']
+                continue
         for region in geonames.find({'country': c['_id'], 'admin_level': 6}):
             try:
                 sub_regions = get_subregions(region['_id'], region['name'])
@@ -500,6 +503,7 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('city-divisions')
     subparser.add_argument('--country')
+    subparser.add_argument('--update', action='store_true')
     subparser.set_defaults(func=add_city_level_divisions)
 
     args = parser.parse_args()
