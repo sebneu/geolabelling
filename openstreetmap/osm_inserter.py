@@ -201,7 +201,9 @@ def read_osm_files(client, args):
         all_c.append(countries.find_one({'_id': args.country}))
     else:
         for c in countries.find({'continent': 'EU'}):
-            all_c.append(c)
+            if c['iso'] not in args.skip:
+                all_c.append(c)
+
 
     for country in all_c:
         c_name = format_country_name(country['name'])
@@ -328,6 +330,7 @@ if __name__ == "__main__":
     subparser.add_argument('--country')
     subparser.add_argument('--level', type=int, default=8)
     subparser.add_argument('--directory', default='poly-exports/osm-export/')
+    subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
 
     args = parser.parse_args()
 
