@@ -190,20 +190,29 @@ def get_polygons(client, args):
 
 def read_osm_files(client, args):
     logging.info("OSM inserter started. Args: " + str(args))
-    processed = []
-    if args.processed:
-        with open(args.processed) as f:
-            for row in f:
-                processed.append(row.strip())
+    db = client.geostore
+    countries = db.countries
+    admin_level = args.level
 
+    dir = args.directory
 
-    path = args.directory
-    for filename in os.listdir(path):
-        if filename.endswith(".osm"):
-            f = os.path.join(path, filename)
-            geonames_id = filename[:-4]
-            if geonames_id not in processed:
-                read_osm_xml(client, f, geonames_id)
+    all_c = []
+    if args.country:
+        all_c.append(countries.find_one({'_id': args.country}))
+    else:
+        for c in countries.find({'continent': 'EU'}):
+            all_c.append(c)
+
+    for country in all_c:
+        c_name = format_country_name(country['name'])
+        path = os.path.join(dir, c_name, admin_level)
+
+        if os.path.isdir(path):
+            for filename in os.listdir(path):
+                if filename.endswith(".osm"):
+                    f = os.path.join(path, filename)
+                    geonames_id = filename[:-4]
+                    read_osm_xml(client, f, geonames_id)
 
 
 def geonamesId_to_url(geo_id):
@@ -316,8 +325,9 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('insert-osm')
     subparser.set_defaults(func=read_osm_files)
-    subparser.add_argument('--directory', default='poly-exports/osm-export/6')
-    subparser.add_argument('--processed', default='poly-exports/processed.csv')
+    subparser.add_argument('--country')
+    subparser.add_argument('--level', type=int, default=8)
+    subparser.add_argument('--directory', default='poly-exports/osm-export/')
 
     args = parser.parse_args()
 

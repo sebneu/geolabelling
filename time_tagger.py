@@ -6,7 +6,7 @@ from xml.sax.saxutils import escape, unescape
 import os
 
 
-def get_heideltime_annotations(value, heideltime_path):
+def get_heideltime_annotations(value, heideltime_path, language):
 
     tmp_file = 'tmp_temporalinfo.txt'
     with open(tmp_file, 'w') as f:
@@ -14,13 +14,13 @@ def get_heideltime_annotations(value, heideltime_path):
 
     cwd = os.getcwd()
 
-    p = subprocess.Popen(['java', '-jar', 'de.unihd.dbs.heideltime.standalone.jar', '-l', 'GERMAN', os.path.join(cwd, tmp_file)], cwd=heideltime_path, stdout=subprocess.PIPE)
+    p = subprocess.Popen(['java', '-jar', 'de.unihd.dbs.heideltime.standalone.jar', '-l', language, os.path.join(cwd, tmp_file)], cwd=heideltime_path, stdout=subprocess.PIPE)
     res, err = p.communicate()
     root = etree.fromstring(res)
     return root
 
 
-def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalone'):
+def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalone', language='GERMAN'):
     # get temporal information
     dataset_name = dataset.get('name', '')
     dataset_description = dataset.get('description', '')
@@ -33,7 +33,7 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
         dates = []
         # first escape any xml escaped characters
         esc_v = escape(value)
-        root = get_heideltime_annotations(esc_v, heideltime_path)
+        root = get_heideltime_annotations(esc_v, heideltime_path, language)
         for t in root:
             if t.attrib['type'] == 'DATE':
                 v = t.attrib['value']

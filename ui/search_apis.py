@@ -425,7 +425,7 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
