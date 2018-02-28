@@ -207,7 +207,7 @@ def read_osm_files(client, args):
 
     for country in all_c:
         c_name = format_country_name(country['name'])
-        path = os.path.join(dir, c_name, admin_level)
+        path = os.path.join(dir, c_name, str(admin_level))
 
         if os.path.isdir(path):
             for filename in os.listdir(path):
