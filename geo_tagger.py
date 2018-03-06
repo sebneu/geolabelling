@@ -102,16 +102,17 @@ class GeoTagger:
         else:
             keys = data.keys()
         for d in keys:
-            text = data[d]
-            text = text.lower()
-            for c in [',', ';', '.', '_', '"', '(', ')']:
-                text = text.replace(c, ' ')
-            text = nltk.word_tokenize(text.lower())
-            text = removeStopwords(text)
-            for i in range(1, max(len(text), group_of_words)):
-                for words in grouper(text, i):
-                    v = ' '.join(words)
-                    values.add(v)
+            if d in data:
+                text = data[d]
+                text = text.lower()
+                for c in [',', ';', '.', '_', '"', '(', ')']:
+                    text = text.replace(c, ' ')
+                text = nltk.word_tokenize(text.lower())
+                text = removeStopwords(text)
+                for i in range(1, max(len(text), group_of_words)):
+                    for words in grouper(text, i):
+                        v = ' '.join(words)
+                        values.add(v)
 
         disamb, confidence = self.disambiguate_values(values, None)
         aggr = self.aggregated_parents(disamb)
