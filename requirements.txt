@@ -4,3 +4,6 @@ flask
 rdflib
 sparql-client
 pymongo
+pycountry
+postal==1.0
+nltk
