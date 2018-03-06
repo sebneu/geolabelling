@@ -14,7 +14,7 @@ class OSMTagger:
         self.osm_names = db.osm_names
         self.geonames = db.geonames
 
-    def label_values(self, values, regions):
+    def label_values(self, values, context_columns, regions):
         """
         The osm names require a set of potential admin_level 8 regions.
         These could be gathered from other columns, metadata,
@@ -25,6 +25,7 @@ class OSMTagger:
         """
         places = defaultdict(list)
         roads = defaultdict(list)
+        context = defaultdict(list)
         val_count = 0.
 
         for i, value in enumerate(values):
@@ -35,11 +36,14 @@ class OSMTagger:
                 for parsed in addr:
                     if parsed[1] in ROAD:
                         roads[parsed[0]].append(i)
+                        for c in context_columns:
+                            if c[i]:
+                                context[parsed[0]].append(c[i])
                     if parsed[1] in PLACE:
                         places[parsed[0]].append(i)
 
         # TODO: min number of potential roads in column
-        labelled_roads = self.find_osm_names(roads, regions)
+        labelled_roads = self.find_osm_names(roads, context, regions)
 
         match = 0.
         labelled_v = ['' for _ in range(len(values))]
@@ -53,7 +57,7 @@ class OSMTagger:
         return labelled_v, confidence
 
 
-    def find_osm_names(self, values, regions):
+    def find_osm_names(self, values, context, regions):
         # filter only relevant osm names within given regions
         candidates = {}
 
@@ -61,8 +65,9 @@ class OSMTagger:
             n = self.osm_names.find_one({'_id': v})
             if n:
                 candidates[v] = [self.osm.find_one({'_id': c}) for c in n['osm_id']]
-                if regions:
-                    candidates[v][:] = [c for c in candidates[v] if set(c['geonames_ids']) & set(regions)]
+                tmp = context[v] if context[v] else regions
+                if tmp:
+                    candidates[v][:] = [c for c in candidates[v] if set(c['geonames_ids']) & set(tmp)]
 
         context_count = self.get_context_count(candidates)
 

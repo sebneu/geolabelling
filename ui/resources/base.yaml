@@ -8,7 +8,7 @@ db:
 es:
     indexName: eucsv
     host: localhost
-    port: 9200
+    port: 9201
 
 ui:
     maxFileSize: 1048576

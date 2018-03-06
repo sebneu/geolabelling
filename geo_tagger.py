@@ -10,7 +10,7 @@ from helper.language_specifics import ADDITIONAL_STOPWORDS
 from openstreetmap.osm_inserter import get_geonames_url, get_geonames_id
 from osm_tagger import OSMTagger
 
-NUTS_PATTERN = re.compile('^[A-Z]{2}\d{0,3}$')
+NUTS_PATTERN = re.compile('^[A-Z]{2}[A-Z0-9]{0,3}$')
 # More general pattern than NUTS
 POSTAL_PATTERN = re.compile('^(([A-Z\d]){2,4}|([A-Z]{1,2}.)?\d{2,5}(\s[A-Z]{2,5})?(.[\d]{1,4})?)$')
 
@@ -136,6 +136,9 @@ class GeoTagger:
                     col_types[k]['POSTAL'] += 1
                 #cols[k].append(c.strip())
 
+        col_results = []
+        not_mapped = []
+        context_columns = []
         for col in range(dt['no_columns']):
             #  based on col type (90% threshold)
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
@@ -144,16 +147,29 @@ class GeoTagger:
                 disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'], country_id)
                 source = 'geonames'
             else:
-                disamb, confidence, res_col, source = self.string_column(dt['column'][col]['values']['exact'], country_id, regions=regions)
+                disamb, confidence, res_col, source = self.string_column(dt['column'][col]['values']['exact'], country_id)
+                if confidence <= min_matches:
+                    not_mapped.append(col)
 
             if confidence > min_matches:
-                dt['locations'] += res_col
-                dt['column'][col]['entities'] = disamb
-                dt['column'][col]['source'] = source
-                for row, e in zip(dt['row'], disamb):
-                    if not 'entities' in row:
-                        row['entities'] = ['' for _ in range(dt['no_columns'])]
-                    row['entities'][col] = e
+                context_columns.append(disamb)
+                col_results.append((col, disamb, confidence, res_col, source))
+
+        # try osm mapping
+        for col in not_mapped:
+            disamb, confidence, res_col, source = self.osm_column(dt['column'][col]['values']['exact'], context_columns, regions=regions)
+            if confidence > min_matches:
+                col_results.append((col, disamb, confidence, res_col, source))
+
+        # process mapped cols
+        for col, disamb, confidence, res_col, source in col_results:
+            dt['locations'] += res_col
+            dt['column'][col]['entities'] = disamb
+            dt['column'][col]['source'] = source
+            for row, e in zip(dt['row'], disamb):
+                if not 'entities' in row:
+                    row['entities'] = ['' for _ in range(dt['no_columns'])]
+                row['entities'][col] = e
 
         dt['locations'] = list(set(dt['locations']))
         if len(dt['locations']) == 0:
@@ -165,16 +181,10 @@ class GeoTagger:
     def postalcodes_without_country(self, values):
         refs = defaultdict(dict)
         for i, v in enumerate(values):
-            val_res = self.postalcodes.find_one({'_id': v})
-            if val_res:
-                if 'countries' in val_res:
-                    for c in val_res['countries']:
-                        country = c['country']
-                        reg = c.get('region')
-                        if reg:
-                            refs[country][i] = reg
-        # else:
-        #        refs['empty'][i] = ''
+            for val_res in self.geonames.find({'postalcode': v}):
+                if 'country' in val_res:
+                    country = val_res['country']
+                    refs[country][i] = val_res['_id']
 
         max_c = 0
         selected_country = None
@@ -196,17 +206,10 @@ class GeoTagger:
         result = []
         for i, v in enumerate(values):
             res_region = ''
-            val_res = self.postalcodes.find_one({'_id': v})
+            val_res = self.geonames.find_one({'postalcode': v, 'country': country_id})
             if val_res:
-                if 'countries' in val_res:
-                    for c in val_res['countries']:
-                        country = c['country']
-                        if country_id == country:
-                            reg = c.get('region')
-                            if reg:
-                                match += 1
-                                res_region = reg
-                                break
+                res_region = val_res['_id']
+                match += 1
             result.append(res_region)
 
         confidence = match / len(values) if len(values) > 0 else 0.
@@ -221,22 +224,24 @@ class GeoTagger:
             return self.postalcodes_without_country(values)
 
 
-    def string_column(self, values, country_id=None, regions=list(), min_geonames_matches=0.4):
+    def string_column(self, values, country_id=None):
         disambiguated_col, confidence = self.disambiguate_values(values, country_id)
         aggr = self.aggregated_parents(disambiguated_col)
         source = 'geonames'
+        return disambiguated_col, confidence, aggr, source
 
+
+    def osm_column(self, values, context_columns, regions=list()):
         # try OSM tagger if no mappings
-        if confidence < min_geonames_matches:
-            osm_ids, confidence = self.osm_tagger.label_values(values, regions)
-            geonames_regions = set()
-            disambiguated_col = []
-            for r in osm_ids:
-                disambiguated_col.append(r['_id'] if r else '')
-                if r:
-                    geonames_regions.update([get_geonames_url(x) for x in r['geonames_ids']])
-            aggr = self.aggregated_parents(geonames_regions)
-            source = 'osm'
+        osm_ids, confidence = self.osm_tagger.label_values(values, context_columns, regions)
+        geonames_regions = set()
+        disambiguated_col = []
+        for r in osm_ids:
+            disambiguated_col.append(r['_id'] if r else '')
+            if r:
+                geonames_regions.update([get_geonames_url(x) for x in r['geonames_ids']])
+        aggr = self.aggregated_parents(geonames_regions)
+        source = 'osm'
         return disambiguated_col, confidence, aggr, source
 
 
@@ -286,7 +291,7 @@ class GeoTagger:
         if 'geonames' in val_res:
             for candidate in val_res['geonames']:
                 geon_c = self.geonames.find_one({'_id': candidate})
-                if country_id and geon_c.get('country') != country_id and 'admin_level' not in geon_c:
+                if country_id and geon_c.get('country') != country_id: # and 'admin_level' not in geon_c:
                     continue
                 parents = self.get_all_parents(candidate, names=False, admin_level=True)
                 for p in parents:
@@ -392,7 +397,7 @@ class GeoTagger:
         :return: iterable of all subregions
         """
         country = self.get_country_by_iso(iso_country_code)
-        q = self.geonames.find({'admin_level': 6, 'parent': geonames_id, "country" : country})
+        q = self.geonames.find({'admin_level': 6, 'parent': geonames_id, "country": country})
 
         r_tmp = [get_geonames_id(r['_id']) for r in q]
         regions = set()
