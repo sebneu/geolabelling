@@ -2,11 +2,11 @@ data:
     submit: 'data/submit/'
 
 db:
-    host: 'localhost'
-    port: 27018
+    host: localhost
+    port: 27017
 
 es:
-    indexName: autcsv
+    indexName: eucsv
     host: localhost
     port: 9200
 
