@@ -67,9 +67,10 @@ class LocationSearch:
         results = []
         # for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
 
-        cursor = self.geonames.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
+        cursor = self.geonames.find({'$text': {'$search': q}}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
-        cursor.limit(limit)
+        if limit >= 0:
+            cursor.limit(limit)
 
         for res in cursor:
             tmp = {
@@ -92,7 +93,8 @@ class LocationSearch:
 
         cursor = self.osm.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
-        cursor.limit(limit)
+        if limit >= 0:
+            cursor.limit(limit)
 
         for res in cursor:
             tmp = {
@@ -110,7 +112,10 @@ class LocationSearch:
 
     def get_postalcodes(self, q, search_api, limit=5):
         results = []
-        for res in self.postalcodes.find({'_id': {'$regex': '^' + q}}).limit(limit):
+        cursor = self.postalcodes.find({'_id': {'$regex': '^' + q}})
+        if limit >= 0:
+            cursor.limit(limit)
+        for res in cursor:
             if 'countries' in res:
                 for country in res['countries']:
                     tmp = {
@@ -130,7 +135,11 @@ class LocationSearch:
 
     def get_nuts(self, q, search_api, limit=5):
         results = []
-        for res in self.nuts.find({'_id': {'$regex': '^' + q}}).limit(limit):
+        cursor = self.nuts.find({'_id': {'$regex': '^' + q}})
+        if limit >= 0:
+            cursor.limit(limit)
+
+        for res in cursor:
             resp = {'l': mongo_collections_utils.get_nuts_link(res)}
             tmp = {
                 'title': res['_id'],

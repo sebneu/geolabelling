@@ -128,15 +128,20 @@ def geonamesapi():
 
 @ui.route('/searchapi', methods=['GET'])
 def searchapi():
+    resp = search_kg()
+    return jsonify(resp)
+
+
+def search_kg(limit=10):
     q = request.args.get("q")
     if not q:
-        resp = jsonify({'error': 'no keyword supplied. Use argument q'})
+        resp = {'error': 'no keyword supplied. Use argument q'}
         # resp.status_code = 404
         return resp
 
     locationsearch = current_app.config['LOCATION_SEARCH']
     search_api = url_for('.search')
-    results = locationsearch.get_by_substring(q, search_api)
+    results = locationsearch.get_by_substring(q, search_api, limit=limit)
     resp = {
       "results": {
         "locations": {
@@ -146,34 +151,30 @@ def searchapi():
       }
     }
 
-    results = locationsearch.get_osm_names_by_substring(q, search_api)
+    results = locationsearch.get_osm_names_by_substring(q, search_api, limit=limit)
     resp["results"]["postalcodes"] = {
       "name": "Streets",
       "results": results
     }
 
     if POSTAL_PATTERN.match(q):
-        postalcodes = locationsearch.get_postalcodes(q, search_api)
+        postalcodes = locationsearch.get_postalcodes(q, search_api, limit=limit)
         resp["results"]["postalcodes"] = {
             "name": "Postal codes",
             "results": postalcodes
         }
 
     if NUTS_PATTERN.match(q):
-        nuts = locationsearch.get_nuts(q, search_api)
+        nuts = locationsearch.get_nuts(q, search_api, limit=limit)
         resp["results"]["nutscodes"] = {
             "name": "NUTS codes",
             "results": nuts
         }
 
-    resp = jsonify(resp)
     return resp
 
 
-def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
-    ls = request.args.getlist("l")
-    p = request.args.get("p")
-    q = request.args.get("q")
+def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, offset=0):
     temp_start = request.args.get("start")
     temp_end = request.args.get("end")
     limit = request.args.get("limit", limit)
@@ -281,16 +282,32 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
 def search():
     limit = 10
     page = try_page(request.form.get("page", 1))
-    data = get_search_results(row_cutoff=True, aggregated_locations=True, limit=limit, offset=10 * (page-1))
+
+    ls = request.args.getlist("l")
+    p = request.args.get("p")
+    q = request.args.get("q")
+    if ls:
+        q = None
+    data = get_search_results(ls, q, p, row_cutoff=True, aggregated_locations=True, limit=limit, offset=10 * (page-1))
 
     data['currentPage'] = page
     data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, data['total'], limit))]
     return render('index.jinja', data)
 
+@ui.route('/kgsearch', methods=['GET', 'POST'])
+def kgsearch():
+    data = search_kg(-1)
+
+    return render('kgsearch.jinja', data)
+
+
 
 @ui.route('/locationsearch', methods=['GET'])
 def locationsearch():
-    data = get_search_results(row_cutoff=False, aggregated_locations=True)
+    ls = request.args.getlist("l")
+    p = request.args.get("p")
+    q = request.args.get("q")
+    data = get_search_results(ls, q, p, row_cutoff=False, aggregated_locations=True)
     return jsonify(data)
 
 
