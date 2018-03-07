@@ -2,7 +2,7 @@ data:
     submit: 'data/submit/'
 
 db:
-    host: 'localhost'
+    host: localhost
     port: 27018
 
 es:
