@@ -33,12 +33,12 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
     if not published:
         published = dataset.get('datePublished')
     if published:
-        date = parser.parse(modified)
+        date = parser.parse(published)
         dcat_dates.append(date)
 
-    modified = dist.get('datePublished')
+    modified = dist.get('dateModified')
     if not modified:
-        modified = dataset.get('datePublished')
+        modified = dataset.get('dateModified')
     if modified:
         date = parser.parse(modified)
         dcat_dates.append(date)
