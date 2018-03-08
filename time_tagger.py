@@ -28,9 +28,25 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
     dist_name = dist.get('name', '')
     dist_description = dist.get('description', '')
 
+    dcat_dates = []
+    published = dist.get('datePublished')
+    if not published:
+        published = dataset.get('datePublished')
+    if published:
+        date = parser.parse(modified)
+        dcat_dates.append(date)
+
+    modified = dist.get('datePublished')
+    if not modified:
+        modified = dataset.get('datePublished')
+    if modified:
+        date = parser.parse(modified)
+        dcat_dates.append(date)
+
+    dates = dcat_dates
     # priorities to different sources of datetime information: dist > dataset info
     for value in [dist_name, dist_description, dataset_name, dataset_description, ', '.join(keywords)]:
-        dates = []
+        dates = dcat_dates
         # first escape any xml escaped characters
         esc_v = escape(value)
         root = get_heideltime_annotations(esc_v, heideltime_path, language)
@@ -39,8 +55,11 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
                 v = t.attrib['value']
                 date = parser.parse(v)
                 dates.append(date)
-        if len(dates) > 0:
-            start = min(dates).strftime("%Y-%m-%d")
-            end = max(dates).strftime("%Y-%m-%d")
-            return start, end
+        if len(dates) > len(dcat_dates):
+            break
+
+    if len(dates) > 0:
+        start = min(dates).strftime("%Y-%m-%d")
+        end = max(dates).strftime("%Y-%m-%d")
+        return start, end
     return None, None

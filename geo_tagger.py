@@ -10,6 +10,9 @@ from helper.language_specifics import ADDITIONAL_STOPWORDS
 from openstreetmap.osm_inserter import get_geonames_url, get_geonames_id
 from osm_tagger import OSMTagger
 
+import dateutil.parser
+from datetime import timedelta
+
 NUTS_PATTERN = re.compile('^[A-Z]{2}[A-Z0-9]{0,3}$')
 # More general pattern than NUTS
 POSTAL_PATTERN = re.compile('^(([A-Z\d]){2,4}|([A-Z]{1,2}.)?\d{2,5}(\s[A-Z]{2,5})?(.[\d]{1,4})?)$')
@@ -38,6 +41,9 @@ def removeStopwords(words, language=None):
 def grouper(input_list, n = 2):
     for i in xrange(len(input_list) - (n - 1)):
         yield input_list[i:i+n]
+
+def year_values(min_v, max_v):
+    return min_v.isdigit() and max_v.isdigit() and int(min_v) > 1900 and int(max_v) < 2050
 
 
 class GeoTagger:
@@ -121,13 +127,13 @@ class GeoTagger:
         return list(set(disamb) | set(aggr))
 
 
-    def from_dt(self, dt, orig_country_code=None, min_matches=0.5, regions=list()):
+    def from_dt(self, dt, orig_country_code=None, min_matches=0.5, min_date_matches=0.8, regions=list()):
         country_id = self.get_country_by_iso(orig_country_code)
 
         #cols = [[] for _ in range(dt['no_columns'])]
         col_types = [defaultdict(int) for _ in range(dt['no_columns'])]
-        if not 'locations' in dt:
-            dt['locations'] = []
+        if not 'data_entities' in dt:
+            dt['data_entities'] = []
 
         for i, row in enumerate(dt['row']):
             for k, c in enumerate(row['values']['exact']):
@@ -144,7 +150,8 @@ class GeoTagger:
             #  based on col type (90% threshold)
             if 'NUTS' in col_types[col] and col_types[col]['NUTS'] >= i * 0.9:
                 disamb, confidence, res_col, source = self.nuts_column(dt['column'][col]['values']['exact'])
-            elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9:
+            # check also for typical year values
+            elif 'POSTAL' in col_types[col] and col_types[col]['POSTAL'] >= i * 0.9 and not year_values(dt['column'][col].get('min', ''), dt['column'][col].get('max','')):
                 disamb, confidence, res_col = self.postalcodes_column(dt['column'][col]['values']['exact'], country_id)
                 source = 'geonames'
             else:
@@ -158,13 +165,24 @@ class GeoTagger:
 
         # try osm mapping
         for col in not_mapped:
-            disamb, confidence, res_col, source = self.osm_column(dt['column'][col]['values']['exact'], context_columns, regions=regions)
-            if confidence > min_matches:
-                col_results.append((col, disamb, confidence, res_col, source))
+            dates, confidence = self.datetime_column(dt['column'][col]['values']['exact'])
+            if confidence > min_date_matches:
+                start = min(dates).strftime("%Y-%m-%d")
+                end = max(dates).strftime("%Y-%m-%d")
+                dt['data_temp_start'] = min(start, dt.get('data_temp_start', start))
+                dt['data_temp_end'] = max(end, dt.get('data_temp_end', end))
+
+                pattern = self.datetime_pattern(dates)
+                p = dt.get('data_temp_pattern', pattern)
+                dt['data_temp_pattern'] = p if p != 'varying' else pattern
+            else:
+                disamb, confidence, res_col, source = self.osm_column(dt['column'][col]['values']['exact'], context_columns, regions=regions)
+                if confidence > min_matches:
+                    col_results.append((col, disamb, confidence, res_col, source))
 
         # process mapped cols
         for col, disamb, confidence, res_col, source in col_results:
-            dt['locations'] += res_col
+            dt['data_entities'] += res_col
             dt['column'][col]['entities'] = disamb
             dt['column'][col]['source'] = source
             for row, e in zip(dt['row'], disamb):
@@ -172,9 +190,9 @@ class GeoTagger:
                     row['entities'] = ['' for _ in range(dt['no_columns'])]
                 row['entities'][col] = e
 
-        dt['locations'] = list(set(dt['locations']))
-        if len(dt['locations']) == 0:
-            del dt['locations']
+        dt['data_entities'] = list(set(dt['data_entities']))
+        if len(dt['data_entities']) == 0:
+            del dt['data_entities']
             return False
         else:
             return True
@@ -217,6 +235,41 @@ class GeoTagger:
         aggr = self.aggregated_parents(result)
         return result, confidence, aggr
 
+
+    def datetime_column(self, values):
+        match = 0.
+        result = []
+        for i, v in enumerate(values):
+            try:
+                d = dateutil.parser.parse(v)
+                match += 1
+                result.append(d)
+            except:
+                pass
+        confidence = match / len(values) if len(values) > 0 else 0.
+        return result, confidence
+
+
+    def datetime_pattern(self, dates):
+        # varying, static, daily, weekly, monthly, quarterly, yearly, other
+        if len(set(dates)) == 1:
+            return 'static'
+
+        dates = sorted(dates)
+        deltas = [(x - dates[i - 1]).total_seconds() for i, x in enumerate(dates)][1:]
+
+        for pattern, length in [('daily', timedelta(days=1).total_seconds()),
+                                ('weekly', timedelta(days=7).total_seconds()),
+                                ('monthly', timedelta(days=30).total_seconds()),
+                                ('quarterly', timedelta(days=91).total_seconds()),
+                                ('yearly', timedelta(days=365).total_seconds())]:
+            # add 10% plus/minus to be allowed
+            if all(length - length * 0.1 < i < length + length * 0.1 for i in deltas):
+                return pattern
+
+        if len(set(deltas)) == 1:
+            return str(timedelta(seconds=deltas[0]))
+        return 'varying'
 
     def postalcodes_column(self, values, country_id=None):
         if country_id:
