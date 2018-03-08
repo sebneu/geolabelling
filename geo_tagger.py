@@ -101,7 +101,8 @@ class GeoTagger:
         return {'disambiguation': disambiguation, 'sample': sample, 'cols': num_cols, 'rows': i, 'tagging': result}
 
 
-    def from_metadatada(self, data, fields=None, group_of_words=4):
+    def from_metadatada(self, data, fields=None, group_of_words=3, orig_country_code=None):
+        country_id = self.get_country_by_iso(orig_country_code)
         values = set()
         if fields:
             keys = fields
@@ -120,7 +121,7 @@ class GeoTagger:
                         v = ' '.join(words)
                         values.add(v)
 
-        disamb, confidence = self.disambiguate_values(values, None)
+        disamb, confidence = self.disambiguate_values(values, country_id)
         aggr = self.aggregated_parents(disamb)
 
         disamb = [x for x in disamb if x]
