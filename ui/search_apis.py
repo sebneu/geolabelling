@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import defaultdict
 
 import yaml
@@ -116,21 +117,24 @@ class LocationSearch:
         if limit >= 0:
             cursor.limit(limit)
         for res in cursor:
-            if 'countries' in res:
-                for country in res['countries']:
-                    tmp = {
-                        'title': res['_id']
-                    }
-                    c = self.countries.find_one({'_id': country['country']})
-                    if 'name' in c:
-                        tmp['price'] = c['name']
-                        tmp['url'] = search_api + '?' + urllib.urlencode(
-                            {'p': c['iso'] + '#' + res['_id']})
-                    if 'region' in country:
-                        region = self.geonames.find_one({'_id': country['region']})
-                        if region and 'name' in region:
-                            tmp['description'] = region['name']
-                    results.append(tmp)
+            try:
+                if 'countries' in res:
+                    for country in res['countries']:
+                        tmp = {
+                            'title': res['_id']
+                        }
+                        c = self.countries.find_one({'_id': country['country']})
+                        if 'name' in c:
+                            tmp['price'] = c['name']
+                            tmp['url'] = search_api + '?' + urllib.urlencode(
+                                {'p': c['iso'] + '#' + res['_id']})
+                        if 'region' in country:
+                            region = self.geonames.find_one({'_id': country['region']})
+                            if region and 'name' in region:
+                                tmp['description'] = region['name']
+                        results.append(tmp)
+            except Exception as e:
+                logging.error(e)
         return results
 
     def get_nuts(self, q, search_api, limit=5):
@@ -196,7 +200,7 @@ class ESClient(object):
             self.indexName = indexName
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations', 'dataset.*']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
         exclude = []
         if columns:
             include.append("column.*")
@@ -207,7 +211,7 @@ class ESClient(object):
         return res
 
     def get_triples(self, url, location_search):
-        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations',
+        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities',
                    'dataset.*']
         exclude = ['row.*']
         res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
@@ -332,8 +336,8 @@ class ESClient(object):
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "metadata_entities', 'data_entities", "metadata_temp_start",
+                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     tmp: [
@@ -381,7 +385,7 @@ class ESClient(object):
                 "constant_score": {
                     "filter": {
                         "terms": {
-                            "locations": entities
+                            "metadata_entities": entities
                         }
                     }
                 }
@@ -394,8 +398,8 @@ class ESClient(object):
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
+                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     tmp: [
@@ -429,7 +433,7 @@ class ESClient(object):
                 "constant_score": {
                     "filter": {
                         "terms": {
-                            "locations": entities
+                            "metadata_entities": entities
                         }
                     }
                 }
@@ -438,8 +442,8 @@ class ESClient(object):
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
+                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     "should": [
@@ -511,7 +515,7 @@ class ESClient(object):
             if start:
                 q.append({
                     "range": {
-                        "temporal_start": {
+                        "metadata_temp_start": {
                             "gte": start,
                         }
                     }
@@ -519,7 +523,7 @@ class ESClient(object):
             if end:
                 q.append({
                     "range": {
-                        "temporal_end": {
+                        "metadata_temp_end": {
                             "lt": end
                         }
                     }
@@ -554,7 +558,7 @@ def format_results(results, row_cutoff, dataset=False):
             d_link = d["portal"]["dataset_link"]
             datasets[d_link].append()
 
-        for f in ['dataset', 'locations', 'temporal_start', 'temporal_end']:
+        for f in ['dataset', 'locations', 'metadata_temp_start', 'metadata_temp_end']:
             if f in doc['_source']:
                 d[f] = doc['_source'][f]
 
@@ -575,8 +579,8 @@ def format_table(doc, row_cutoff, locationsearch, max_rows=500):
     d['headers'] = _get_doc_headers(doc, row_cutoff)
 
     d['locations'] = []
-    if 'locations' in doc['_source']:
-        for l in doc['_source']['locations']:
+    if 'metadata_entities' in doc['_source']:
+        for l in doc['_source']['metadata_entities']:
             geo_l = locationsearch.get(l)
             if geo_l:
                 d['locations'].append({'name': geo_l['name'], 'uri': l})

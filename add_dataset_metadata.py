@@ -36,8 +36,8 @@ def iter_datasets(p, sn, es):
                                     fields = {'dataset': dsfields}
                                     start, end = time_tagger.get_temporal_information(dist, dataset)
                                     if start and end:
-                                        fields['temporal_start'] = start
-                                        fields['temporal_end'] = end
+                                        fields['metadata_temp_start'] = start
+                                        fields['metadata_temp_end'] = end
 
                                     #doc = es.get(url, columns=False, rows=False)
                                     #if 'dataset' not in doc['_source']:
