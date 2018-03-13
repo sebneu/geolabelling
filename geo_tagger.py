@@ -288,13 +288,13 @@ class GeoTagger:
 
     def osm_column(self, values, context_columns, regions=list()):
         # try OSM tagger if no mappings
-        osm_ids, confidence = self.osm_tagger.label_values(values, context_columns, regions)
+        osm_ids, confidence = self.osm_tagger.label_values(values, context_columns, regions, geotagger=self)
         geonames_regions = set()
         disambiguated_col = []
         for r in osm_ids:
             disambiguated_col.append(r['_id'] if r else '')
             if r:
-                geonames_regions.update([get_geonames_url(x) for x in r['geonames_ids']])
+                geonames_regions.add(r['geonames_id'])
         aggr = self.aggregated_parents(geonames_regions)
         source = 'osm'
         return disambiguated_col, confidence, aggr, source
@@ -433,7 +433,7 @@ class GeoTagger:
             else:
                 add_to_lists()
             # recursive call
-                self._get_all_parents(current["parent"], names_list, ids_list, admin_level, all_ids)
+            self._get_all_parents(current["parent"], names_list, ids_list, admin_level, all_ids)
 
     def get_all_parents(self, geo_id, names=True, admin_level=False):
         all_names = []
@@ -443,6 +443,13 @@ class GeoTagger:
             return all_names
         else:
             return all_ids
+
+    def get_parent(self, geo_id):
+        current = self.geonames.find_one({"_id": geo_id})
+        if current and "parent" in current:
+            return self.geonames.find_one({"_id": current['parent']})
+        return None
+
 
     def get_all_subregions(self, geonames_id, iso_country_code):
         """
