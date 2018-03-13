@@ -1,6 +1,7 @@
 from collections import defaultdict
 from postal.parser import parse_address
 
+from openstreetmap.osm_inserter import get_geonames_url
 
 ROAD = ['road']
 PLACE = ['city', 'city_district', 'suburb', 'island', 'state_district', 'state', 'state_district', 'country',
@@ -14,7 +15,7 @@ class OSMTagger:
         self.osm_names = db.osm_names
         self.geonames = db.geonames
 
-    def label_values(self, values, context_columns, regions):
+    def label_values(self, values, context_columns, regions, geotagger):
         """
         The osm names require a set of potential admin_level 8 regions.
         These could be gathered from other columns, metadata,
@@ -43,7 +44,7 @@ class OSMTagger:
                         places[parsed[0]].append(i)
 
         # TODO: min number of potential roads in column
-        labelled_roads = self.find_osm_names(roads, context, regions)
+        labelled_roads = self.find_osm_names(roads, context, regions, geotagger)
 
         match = 0.
         labelled_v = ['' for _ in range(len(values))]
@@ -57,7 +58,7 @@ class OSMTagger:
         return labelled_v, confidence
 
 
-    def find_osm_names(self, values, context, regions):
+    def find_osm_names(self, values, context, regions, geotagger):
         # filter only relevant osm names within given regions
         candidates = {}
 
@@ -67,35 +68,42 @@ class OSMTagger:
                 candidates[v] = [self.osm.find_one({'_id': c}) for c in n['osm_id']]
                 tmp = context[v] if context[v] else regions
                 if tmp:
-                    candidates[v][:] = [c for c in candidates[v] if set(c['geonames_ids']) & set(tmp)]
+                    context_regions = [geotagger.get_parent(cr)['_id'] for cr in tmp] + tmp
+                    new_candidate_set = []
+                    for c in candidates[v]:
+                        for x in c['geonames_ids']:
+                            geon = get_geonames_url(x)
+
+                            for y in geotagger.get_all_parents(geon, names=False, admin_level=False):
+                                if y in context_regions:
+                                    new_candidate_set.append({'geonames_id':geon, '_id': c['_id']})
+                                    break
+                    candidates[v] = list(new_candidate_set)
+                    #candidates[v][:] = [c for c in candidates[v] if set(c['geonames_ids']) & set(tmp)]
 
         context_count = self.get_context_count(candidates)
 
-        for c in candidates:
-            if not candidates[c]:
-                candidates[c] = None
-            elif len(candidates[c]) == 1:
-                candidates[c] = candidates[c][0]
-            elif len(candidates[c]) > 1:
+        for k, v in candidates.items():
+            if not v:
+                del candidates[k]
+            elif len(v) == 1:
+                candidates[k] = v[0]
+            elif len(v) > 1:
                 c_count = []
-                for tmp in candidates[c]:
-                    c_count.append(max([context_count[geo_id] for geo_id in tmp['geonames_ids']]))
+                for tmp in v:
+                    geo_id = tmp['geonames_id']
+                    c_count.append(context_count[geo_id])
                 max_index = c_count.index(max(c_count))
-                candidates[c] = candidates[c][max_index]
+                candidates[k] = v[max_index]
         return candidates
 
 
     def get_context_count(self, candidates):
         # TODO if more than one candidate: try to disambiguate based on others
         context_count = defaultdict(int)
-        for c in candidates:
-            geo_ids = []
-            for tmp in candidates[c]:
-                geo_ids += tmp['geonames_ids']
-                for geo_id in geo_ids:
-                    #parents = get_all_parents(self.geonames, get_geonames_url(geo_id), names=False, admin_level=True)
-                    #for p in parents:
-                        context_count[geo_id] += 1
+        for street in candidates:
+            for geo_id in candidates[street]:
+                context_count[geo_id['geonames_id']] += 1
         return context_count
 
 
