@@ -76,7 +76,7 @@ class OSMTagger:
 
                             for y in geotagger.get_all_parents(geon, names=False, admin_level=False):
                                 if y in context_regions:
-                                    new_candidate_set.append({'geonames_id':geon, '_id': c['_id']})
+                                    new_candidate_set.append(c)
                                     break
                     candidates[v] = list(new_candidate_set)
                     #candidates[v][:] = [c for c in candidates[v] if set(c['geonames_ids']) & set(tmp)]
@@ -91,8 +91,7 @@ class OSMTagger:
             elif len(v) > 1:
                 c_count = []
                 for tmp in v:
-                    geo_id = tmp['geonames_id']
-                    c_count.append(context_count[geo_id])
+                    c_count.append(sum(context_count[geo_id] for geo_id in tmp['geonames_ids']))
                 max_index = c_count.index(max(c_count))
                 candidates[k] = v[max_index]
         return candidates
@@ -102,8 +101,9 @@ class OSMTagger:
         # TODO if more than one candidate: try to disambiguate based on others
         context_count = defaultdict(int)
         for street in candidates:
-            for geo_id in candidates[street]:
-                context_count[geo_id['geonames_id']] += 1
+            for c in candidates[street]:
+                for geo_id in c['geonames_ids']:
+                    context_count[geo_id] += 1
         return context_count
 
 
