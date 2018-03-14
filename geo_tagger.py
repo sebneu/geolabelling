@@ -294,7 +294,7 @@ class GeoTagger:
         for r in osm_ids:
             disambiguated_col.append(r['_id'] if r else '')
             if r:
-                geonames_regions.add(r['geonames_id'])
+                geonames_regions.update(set(r['geonames_ids']))
         aggr = self.aggregated_parents(geonames_regions)
         source = 'osm'
         return disambiguated_col, confidence, aggr, source
