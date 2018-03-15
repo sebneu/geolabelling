@@ -68,7 +68,12 @@ class OSMTagger:
                 candidates[v] = [self.osm.find_one({'_id': c}) for c in n['osm_id']]
                 tmp = context[v] if context[v] else regions
                 if tmp:
-                    context_regions = [geotagger.get_parent(cr)['_id'] for cr in tmp] + tmp
+                    context_regions = []
+                    for cr in tmp:
+                        context_regions.append(cr)
+                        p_cr = geotagger.get_parent(cr)
+                        if p_cr:
+                            context_regions.append(p_cr['_id'])
                     new_candidate_set = []
                     for c in candidates[v]:
                         for x in c['geonames_ids']:
