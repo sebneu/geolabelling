@@ -508,26 +508,46 @@ class ESClient(object):
         }
         return self.es.update(index=self.indexName, doc_type='table', id=id, body=q)
 
-    def get_temporal_constraints(self, start, end):
-        q = None
-        if start or end:
-            q = []
-            if start:
-                q.append({
-                    "range": {
-                        "metadata_temp_start": {
-                            "gte": start,
-                        }
+    def get_temporal_constraints(self, metadata_start, metadata_end, start, end, pattern):
+        q = []
+        if start:
+            q.append({
+                "range": {
+                    "data_temp_start": {
+                        "gte": start,
                     }
-                })
-            if end:
-                q.append({
-                    "range": {
-                        "metadata_temp_end": {
-                            "lt": end
-                        }
+                }
+            })
+        if end:
+            q.append({
+                "range": {
+                    "data_temp_end": {
+                        "lt": end
                     }
-                })
+                }
+            })
+        if metadata_start:
+            q.append({
+                "range": {
+                    "metadata_temp_start": {
+                        "gte": metadata_start,
+                    }
+                }
+            })
+        if metadata_end:
+            q.append({
+                "range": {
+                    "metadata_temp_end": {
+                        "lt": metadata_end
+                    }
+                }
+            })
+        if pattern:
+            q.append({
+                "term": {
+                    "data_temp_pattern": pattern
+                }
+            })
         return q
 
 
