@@ -177,6 +177,9 @@ def search_kg(limit=10):
 def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, offset=0):
     temp_start = request.args.get("start")
     temp_end = request.args.get("end")
+    temp_mstart = request.args.get("mstart")
+    temp_mend = request.args.get("mend")
+    pattern = request.args.get("pattern")
     limit = request.args.get("limit", limit)
     offset = request.args.get("offset", offset)
     dataset = bool(request.args.get("dataset", False))
@@ -185,7 +188,7 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
     es_search = current_app.config['ELASTICSEARCH']
     locationsearch = current_app.config['LOCATION_SEARCH']
 
-    temporal_constraints = es_search.get_temporal_constraints(temp_start, temp_end)
+    temporal_constraints = es_search.get_temporal_constraints(temp_mstart, temp_mend, temp_start, temp_end, pattern)
 
     if ls:
         if q:
