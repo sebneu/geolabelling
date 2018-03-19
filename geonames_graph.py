@@ -107,11 +107,17 @@ def add_city_level_divisions(client, args):
 
 
 def add_divisions_to_geonames(client, args):
+    country = args.country
     db = client.geostore
     countries = db.countries
     geonames = db.geonames
 
-    for c in countries.find():
+    if country:
+        countries_iter = countries.find({'_id': country})
+    else:
+        countries_iter = countries.find()
+
+    for c in countries_iter:
         g = rdflib.Graph()
         geonames.update_one({'_id': c['_id']}, {'$set': {'admin_level': 2}})
 
@@ -499,6 +505,7 @@ if __name__ == "__main__":
     subparser.set_defaults(func=countries_to_mongo)
 
     subparser = subparsers.add_parser('divisions')
+    subparser.add_argument('--country')
     subparser.set_defaults(func=add_divisions_to_geonames)
 
     subparser = subparsers.add_parser('city-divisions')
