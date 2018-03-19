@@ -3,6 +3,7 @@ import logging
 import xml.etree.ElementTree as ET
 import os
 import logging
+import itertools
 
 import requests
 import urllib
@@ -154,8 +155,9 @@ def get_polygons_via_wiki(client, args):
     for c in all_c:
         country = c['_id']
 
-        res = geonames.find({'country': country, 'geojson': {'$exists': False}, 'osm_relation': {'$exists': True}})
-        for region in res:
+        res1 = geonames.find({'country': country, 'geojson': {'$exists': False}, 'osm_relation': {'$exists': True}})
+        res2 = geonames.find({'country': country, 'geojson.type': 'Point', 'osm_relation': {'$exists': True}})
+        for region in itertools.chain(res1, res2):
 
             osm_id = region['osm_relation']
 
@@ -168,9 +170,10 @@ def get_polygons_via_wiki(client, args):
             s.headers.update({'referrer': DATA_WU_REFERRER})
             req = s.get(select_url)
             select = req.json()
-            geojson = select['geojson']
 
-            geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
+            if 'geojson' in select:
+                geojson = select['geojson']
+                geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
 
 
 def get_polygons(client, args):
