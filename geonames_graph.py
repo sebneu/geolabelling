@@ -14,6 +14,9 @@ from rdflib.namespace import RDF, RDFS, OWL
 from rdflib import Namespace
 import sparql
 
+from SPARQLWrapper import SPARQLWrapper, JSON
+
+
 GN = Namespace('http://www.geonames.org/ontology#')
 
 WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql'
@@ -214,7 +217,7 @@ def wikidata_osmrelations_to_geonames(client, args):
         }
     '''
     result = s.query(statement)
-    for row in result.fetchone():
+    for row in result.fetchall():
         wikidata_id = row[0].value.strip()
         osm_relation = row[1].value.strip()
         geon = 'http://sws.geonames.org/' + row[2].value + '/'
@@ -234,12 +237,10 @@ def wikidata_geojson_geonames(client, args):
         countries_iter = db.countries.find({'continent': 'EU'})
 
     for c in countries_iter:
-        x = db.geonames.find_one({'_id': c['_id']})
+        logging.debug('Country: ' + c['name'])
+        country = c['wikidata']
 
-        logging.debug('Country: ' + x['name'])
-        country = x['wikidata']
-
-        s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+        sparql = SPARQLWrapper("https://query.wikidata.org/sparql")
         statement = '''
             SELECT ?s ?g ?lon ?lat WHERE {{
               ?s wdt:P1566 ?g.
@@ -249,26 +250,34 @@ def wikidata_geojson_geonames(client, args):
                    psv:P625 [
                      wikibase:geoLongitude ?lon;
                      wikibase:geoLatitude ?lat;
-                     wikibase:geoGlobe ?globe;
                    ] ;
                  ]
             }}
         '''.format(country)
-        result = s.query(statement)
-        for row in result.fetchone():
-            wikidata_id = row[0].value.strip()
-            geon = 'http://sws.geonames.org/' + row[1].value + '/'
-            lon = row[2].value
-            lat = row[3].value
+        sparql.setQuery(statement)
+        sparql.setReturnFormat(JSON)
+
+        results = sparql.query().convert()
+
+        total = 0
+        updated = 0
+        for row in results["results"]["bindings"]:
+            wikidata_id = row['s']['value']
+            geon = 'http://sws.geonames.org/' + row['g']['value'] + '/'
+            lon = float(row['lon']['value'])
+            lat = float(row['lat']['value'])
 
             geojson = {
                 "type": "Point",
                 "coordinates": [lon, lat]
             }
             geon_entry = db.geonames.find_one({'_id': geon, 'geojson': {'$exists': False}})
+            total += 1
             if geon_entry:
+                updated += 1
                 db.geonames.update_one({'_id': geon}, {'$set': {'geojson': geojson, 'wikidata': wikidata_id}})
-
+        print 'total:', total
+        print 'updated:', updated
 
 
 
@@ -284,7 +293,7 @@ def wikidata_postalcodes_to_geonames(client, args):
     }
     '''
     result = s.query(statement)
-    for row in result.fetchone():
+    for row in result.fetchall():
         wikidata_id = row[0].value.strip()
         postalcode = row[1].value.strip()
         geon = 'http://sws.geonames.org/' + row[2].value + '/'
@@ -475,7 +484,7 @@ def wikidata_nuts_to_geonames(client, args):
     }
     '''
     result = s.query(statement)
-    for row in result.fetchone():
+    for row in result.fetchall():
         wikidata_id = row[0].value.strip()
         nuts_code = row[1].value.strip()
         geon = 'http://sws.geonames.org/' + row[2].value + '/'
@@ -504,7 +513,7 @@ def wikidata_links_to_mongo(client, args):
     }
     '''
     result = s.query(statement)
-    for row in result.fetchone():
+    for row in result.fetchall():
         wikid = row[0].value
         geon = 'http://sws.geonames.org/' + row[1].value + '/'
 
@@ -513,6 +522,25 @@ def wikidata_links_to_mongo(client, args):
             geonames.update_one({'_id': geon}, {'$set': {'wikidata': wikid}})
         else:
             logging.debug('Geonames entry not in DB: ' + str(geon))
+
+def wikidata_countries(client, args):
+    db = client.geostore
+
+    s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+
+    for c in db.countries.find():
+        gid = c['_id'].split('http://sws.geonames.org/')[1][:-1]
+        statement = '''
+            SELECT ?s WHERE {{
+              ?s wdt:P1566 "{0}"
+            }}
+            '''.format(gid)
+        result = s.query(statement)
+        for row in result.fetchall():
+            wikid = row[0].value
+            db.countries.update_one({'_id': c['_id']}, {'$set': {'wikidata': wikid}})
+            break
+
 
 
 if __name__ == "__main__":
@@ -555,6 +583,9 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('countries')
     subparser.set_defaults(func=countries_to_mongo)
+
+    subparser = subparsers.add_parser('wikidata-countries')
+    subparser.set_defaults(func=wikidata_countries)
 
     subparser = subparsers.add_parser('divisions')
     subparser.add_argument('--country')
