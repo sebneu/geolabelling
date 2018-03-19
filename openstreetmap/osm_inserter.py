@@ -137,6 +137,42 @@ def get_osm_id(candidates, admin_level):
     return None
 
 
+def get_polygons_via_wiki(client, args):
+
+    db = client.geostore
+    countries = db.countries
+    geonames = db.geonames
+
+    all_c = []
+    if args.country:
+        all_c.append(countries.find_one({'_id': args.country}))
+    else:
+        for c in countries.find({'continent': 'EU'}):
+            if c['iso'] not in args.skip:
+                all_c.append(c)
+
+    for c in all_c:
+        country = c['_id']
+
+        res = geonames.find({'country': country, 'geojson': {'$exists': False}, 'osm_relation': {'$exists': True}})
+        for region in res:
+
+            osm_id = region['osm_relation']
+
+            select_url = 'http://nominatim.openstreetmap.org/reverse?osm_id={0}&osm_type=R&polygon_geojson=1&format=json'\
+                .format(osm_id)
+
+            # waiting time to reduce heavy use
+            time.sleep(1)
+            s = requests.Session()
+            s.headers.update({'referrer': DATA_WU_REFERRER})
+            req = s.get(select_url)
+            select = req.json()
+            geojson = select['geojson']
+
+            geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
+
+
 def get_polygons(client, args):
     db = client.geostore
     countries = db.countries
@@ -324,6 +360,12 @@ if __name__ == "__main__":
     subparser.add_argument('--level', type=int, default=6)
     subparser.add_argument('--update', action='store_true')
     subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
+
+    subparser = subparsers.add_parser('osm-polygons-2')
+    subparser.set_defaults(func=get_polygons_via_wiki)
+    subparser.add_argument('--country')
+    subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
+
 
     subparser = subparsers.add_parser('insert-osm')
     subparser.set_defaults(func=read_osm_files)
