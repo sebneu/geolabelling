@@ -224,6 +224,52 @@ def wikidata_osmrelations_to_geonames(client, args):
             db.geonames.update_one({'_id': geon}, {'$set': {'osm_relation': osm_relation, 'wikidata': wikidata_id}})
 
 
+
+def wikidata_geojson_geonames(client, args):
+    db = client.geostore
+
+    if args.country:
+        countries_iter = db.countries.find({'_id': args.country})
+    else:
+        countries_iter = db.countries.find({'continent': 'EU'})
+
+    for c in countries_iter:
+        x = db.geonames.find_one({'_id': c['_id']})
+        country = x['wikidata']
+
+        s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
+        statement = '''
+            SELECT ?s ?g ?lon ?lat WHERE {{
+              ?s wdt:P1566 ?g.
+              ?s wdt:P17 <{0}>;
+                 p:P625 [
+                   ps:P625 ?coord;
+                   psv:P625 [
+                     wikibase:geoLongitude ?lon;
+                     wikibase:geoLatitude ?lat;
+                     wikibase:geoGlobe ?globe;
+                   ] ;
+                 ]
+            }}
+        '''.format(country)
+        result = s.query(statement)
+        for row in result.fetchone():
+            wikidata_id = row[0].value.strip()
+            geon = 'http://sws.geonames.org/' + row[1].value + '/'
+            lon = row[2].value
+            lat = row[3].value
+
+            geojson = {
+                "type": "Point",
+                "coordinates": [lon, lat]
+            }
+            geon_entry = db.geonames.find_one({'_id': geon, 'geojson': {'$exists': False}})
+            if geon_entry:
+                db.geonames.update_one({'_id': geon}, {'$set': {'geojson': geojson, 'wikidata': wikidata_id}})
+
+
+
+
 def wikidata_postalcodes_to_geonames(client, args):
     db = client.geostore
     postalcodes = db.postalcodes
@@ -500,6 +546,10 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('wikidata-osm')
     subparser.set_defaults(func=wikidata_osmrelations_to_geonames)
+
+    subparser = subparsers.add_parser('wikidata-coordinates')
+    subparser.add_argument('--country')
+    subparser.set_defaults(func=wikidata_geojson_geonames)
 
     subparser = subparsers.add_parser('countries')
     subparser.set_defaults(func=countries_to_mongo)
