@@ -235,6 +235,8 @@ def wikidata_geojson_geonames(client, args):
 
     for c in countries_iter:
         x = db.geonames.find_one({'_id': c['_id']})
+
+        logging.debug('Country: ' + x['name'])
         country = x['wikidata']
 
         s = sparql.Service(WIKIDATA_ENDPOINT, "utf-8", "GET")
