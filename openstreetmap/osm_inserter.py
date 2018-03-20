@@ -169,11 +169,15 @@ def get_polygons_via_wiki(client, args):
             s = requests.Session()
             s.headers.update({'referrer': DATA_WU_REFERRER})
             req = s.get(select_url)
-            select = req.json()
+            if req.status_code == 200:
+                select = req.json()
 
-            if 'geojson' in select:
-                geojson = select['geojson']
-                geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
+                if 'geojson' in select:
+                    geojson = select['geojson']
+                    geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
+            else:
+                print 'error:', req.status_code
+                print req.content
 
 
 def get_polygons(client, args):
