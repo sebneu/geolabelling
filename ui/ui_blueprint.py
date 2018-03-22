@@ -327,6 +327,9 @@ def preview():
 def eswc():
     return render("eswc.jinja")
 
+@ui.route('/sparql', methods=['GET'])
+def sparql():
+    return render("sparql.jinja")
 
 @ui.route('/eswc/<path:url>', methods=['GET'])
 def eswc_view(url):
