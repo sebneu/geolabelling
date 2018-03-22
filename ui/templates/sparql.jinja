@@ -1,0 +1,35 @@
+{% extends "base_layout.jinja" %}
+{% set active_page = "sparql" -%}
+
+
+{% block headcss %}
+    <link href='//cdn.jsdelivr.net/yasgui/2.5.0/yasgui.min.css' rel='stylesheet' type='text/css'/>
+{% endblock %}
+
+
+{% block headscripts %}
+    <script src='//cdn.jsdelivr.net/yasgui/2.5.0/yasgui.min.js'></script>
+{% endblock %}
+
+{% block headerstyle %}
+      .yasgui .endpointText {display:none !important;}
+{% endblock %}
+
+
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui header">SPARQL Endpoint</h2>
+    <div class="container ui">
+        <div class="ui segment">
+	        <div id='yasgui'></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block script %}
+  var yasgui = YASGUI(document.getElementById("yasgui"), {
+    yasqe:{sparql:{endpoint:'http://csvengine.ai.wu.ac.at/sparql/periodo/query'}}
+  });
+{% endblock %}

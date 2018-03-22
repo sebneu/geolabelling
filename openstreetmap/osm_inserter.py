@@ -97,7 +97,7 @@ def export_polygons(client, args):
         if not os.path.exists(lvl_dir):
             os.mkdir(lvl_dir)
 
-        for region in geonames.find({'admin_level': admin_level, 'country': country['_id']}):
+        for region in geonames.find({'admin_level': admin_level, 'country': country['_id'], 'geojson.type': 'Polygon'}):
             if 'geojson' in region:
                 geojson = region['geojson']
                 g_id = get_geonames_id(region['_id'])
