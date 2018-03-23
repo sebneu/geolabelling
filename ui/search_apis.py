@@ -10,6 +10,7 @@ from elasticsearch import Elasticsearch
 
 from openstreetmap.osm_inserter import get_geonames_url
 from ui.utils import mongo_collections_utils
+from ui.utils import export_rdf
 
 import rdflib
 
@@ -211,26 +212,14 @@ class ESClient(object):
         return res
 
     def get_triples(self, url, location_search):
-        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities',
-                   'dataset.*']
+        #include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
         exclude = ['row.*']
-        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
-                          _source_include=include)
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude)
 
         # convert column to RDF
         g = rdflib.Graph()
-        if 'column' in res['_source']:
-            for i, c in enumerate(res['_source']['column']):
-                if 'entities' in c:
-                    if 'header' in c and c['header'][0]['exact'][0]:
-                        h = c['header'][0]['exact'][0].replace(' ', '_')
-                    else:
-                        h = 'col' + str(i)
-                    h_prop = rdflib.URIRef(url + '#' + h)
-                    for e, v in zip(c['entities'], c['values']['exact']):
-                        if e:
-                            entity = location_search.format_entities(e)
-                            g.add((rdflib.URIRef(entity), h_prop, rdflib.Literal(v)))
+        # add data portal
+        export_rdf.addMetadata(res['_source'], g, location_search)
         return g.serialize(format='nt')
 
     def get_urls(self, portal=None, columnlabels='none'):
