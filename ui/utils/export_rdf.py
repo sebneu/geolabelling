@@ -1,26 +1,33 @@
 import os
 import urlparse
-
+import argparse
 import datetime
 
 import structlog
+from pymongo import MongoClient
+
 import profiler
 
 import rdflib
 from rdflib import URIRef, BNode, Literal
-from rdflib.namespace import Namespace, RDF, RDFS, DCTERMS, XSD
+from rdflib.namespace import Namespace, RDF, RDFS, DCTERMS, XSD, OWL
 
 import re
 from rfc3987 import get_compiled_pattern
 import hashlib
+
+from openstreetmap.osm_inserter import get_geonames_url
 
 PW_AGENT = URIRef("http://data.wu.ac.at/portalwatch")
 
 DCAT = Namespace("http://www.w3.org/ns/dcat#")
 CSVW = Namespace("http://www.w3.org/ns/csvw#")
 PROV = Namespace("http://www.w3.org/ns/prov#")
+GN = Namespace("http://www.geonames.org/ontology#")
+WDT = Namespace("http://www.wikidata.org/prop/direct/")
 
 CSVWX = Namespace("http://data.wu.ac.at/csvwx#")
+
 
 log = structlog.get_logger()
 
@@ -141,8 +148,118 @@ def addMetadata( obj, graph, location_search):
                     row_i += 1
 
 
-def storeGraph(graph, portalid, directory):
-    destination=os.path.join(directory, portalid + '.n3')
-    graph.serialize(destination=destination, format='n3')
-    log.info("CSVW Metadata graph stored", portal=portalid, destination=destination)
 
+
+def exportOSM(client, args):
+    db = client.geostore
+    osm_url = 'http://www.openstreetmap.org/'
+
+    g = rdflib.Graph()
+
+    print 'OSM data'
+    for i, osm in enumerate(db.osm.find()):
+        if 'osm_type' in osm:
+            osm_id = osm['_id']
+            c_url = osm_url + osm['osm_type'] + '/' + osm_id
+            if 'name' in osm:
+                g.add((URIRef(c_url), GN.name, Literal(osm['name'])))
+
+            if 'geonames_ids' in osm:
+                for geo_id in osm['geonames_ids']:
+                    g_url = get_geonames_url(geo_id)
+                    g.add((URIRef(c_url), GN.parentFeature, URIRef(g_url)))
+
+        if i % 100000 == 0:
+            print 'processed: ', str(i)
+
+    g.serialize(destination='osm.nt', format='nt')
+    print 'stored nt file'
+
+
+def exportNUTS(client, args):
+    db = client.geostore
+
+    g = rdflib.Graph()
+
+    print 'NUTS data'
+    for nuts in db.nuts.find():
+        # use blank nodes for nuts
+        n = URIRef('http://dd.eionet.europa.eu/vocabularyconcept/common/nuts/' + nuts['_id'])
+        g.add((n, WDT.P605, Literal(nuts['_id'])))
+        if 'name' in nuts:
+            g.add((n, GN.name, Literal(nuts['name'])))
+
+        if 'geonames' in nuts:
+            g.add((n, OWL.sameAs, URIRef(nuts['geonames'])))
+        if 'wikidata' in nuts:
+            g.add((n, OWL.sameAs, URIRef(nuts['wikidata'])))
+        if 'dbpedia' in nuts:
+            g.add((n, OWL.sameAs, URIRef(nuts['dbpedia'])))
+        if 'geovocab' in nuts:
+            g.add((n, OWL.sameAs, URIRef(nuts['geovocab'])))
+
+        if 'parent' in nuts:
+            p = URIRef('http://dd.eionet.europa.eu/vocabularyconcept/common/nuts/' + nuts['parent'])
+            g.add((n, GN.parentFeature, p))
+
+    g.serialize(destination='nuts.nt', format='nt')
+    print 'stored nt file'
+
+
+def exportGeoNames(client, args):
+    db = client.geostore
+    osm_url = 'http://www.openstreetmap.org/'
+
+    graph_count = 1
+    g = rdflib.Graph()
+    print 'GeoNames data'
+    for i, geo_id in enumerate(db.geonames.find()):
+        if 'name' in geo_id:
+            g.add((URIRef(geo_id['_id']), GN.name, Literal(geo_id['name'])))
+        if 'parent' in geo_id:
+            g.add((URIRef(geo_id['_id']), GN.parentFeature, Literal(geo_id['parent'])))
+        if 'country' in geo_id:
+            g.add((URIRef(geo_id['_id']), GN.parentCountry, Literal(geo_id['country'])))
+
+        if 'wikidata' in geo_id:
+            g.add((URIRef(geo_id['_id']), OWL.sameAs, URIRef(geo_id['wikidata'])))
+        if 'dbpedia' in geo_id:
+            g.add((URIRef(geo_id['_id']), OWL.sameAs, URIRef(geo_id['dbpedia'])))
+
+        if 'osm_id' in geo_id:
+            osm_id = geo_id['osm_id']
+            c_url = osm_url + 'relation/' + osm_id
+            g.add((URIRef(geo_id['_id']), OWL.sameAs, URIRef(c_url)))
+
+        if 'postalcode' in geo_id:
+                g.add((URIRef(geo_id['_id']), GN.postalCode, Literal(geo_id['postalcode'])))
+
+        if (i+1) % 3000000 == 0:
+            print 'processed: ', str(i)
+
+            g.serialize(destination='geonames' + str(graph_count) + '.nt', format='nt')
+            print 'stored nt file', graph_count
+            graph_count += 1
+            g = rdflib.Graph()
+
+    g.serialize(destination='geonames' + str(graph_count) + '.nt', format='nt')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='rdf-export')
+    parser.add_argument('--host', default='localhost')
+    parser.add_argument('--port', type=int, default=27018)
+
+    subparsers = parser.add_subparsers()
+
+    subparser = subparsers.add_parser('geonames')
+    subparser.set_defaults(func=exportGeoNames)
+
+    subparser = subparsers.add_parser('osm')
+    subparser.set_defaults(func=exportOSM)
+
+    subparser = subparsers.add_parser('nuts')
+    subparser.set_defaults(func=exportNUTS)
+
+    args = parser.parse_args()
+    client = MongoClient(args.host, args.port)
+    args.func(client, args)
