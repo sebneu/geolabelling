@@ -22,7 +22,7 @@ class GetURLs(Resource):
         return jsonify(list(urls))
 
 
-@get_ns.route('/get')
+@get_ns.route('/dataset')
 @get_ns.doc(params={'url': "The CSV's URL"}, description="Get an indexed CSV by its URL")
 class GetCSV(Resource):
     def get(self):
@@ -32,9 +32,18 @@ class GetCSV(Resource):
 
 
 
+@rdf_ns.route('/portal')
+@rdf_ns.doc(params={'portal': "The data portal ID"}, description="Returns the geo-entities of an indexed data portal as RDF")
+class GetPortalRDF(Resource):
+    def get(self):
+        portal = request.args.get("portal")
+        es_search = current_app.config['ELASTICSEARCH']
+        location_search = current_app.config['LOCATION_SEARCH']
+        nt_file = es_search.get_portal(portal, location_search)
+        return Response(nt_file, mimetype='text')
 
 
-@rdf_ns.route('/labels')
+@rdf_ns.route('/dataset')
 @rdf_ns.doc(params={'url': "The CSV's URL"}, description="Returns the geo-entities of an indexed CSV as RDF")
 class GetCSVTriples(Resource):
     def get(self):

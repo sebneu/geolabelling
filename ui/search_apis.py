@@ -211,15 +211,24 @@ class ESClient(object):
                           _source_include=include)
         return res
 
-    def get_triples(self, url, location_search):
+    def get_portal(self, portal_id, location_search):
+        g = rdflib.Graph()
+        for u in self.get_urls(portal=portal_id):
+            self._get_triples(g, u, location_search)
+        return g.serialize(format='nt')
+
+
+    def _get_triples(self, graph, url, location_search):
         #include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
         exclude = ['row.*']
         res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude)
-
         # convert column to RDF
+        export_rdf.addMetadata(res['_source'], graph, location_search)
+
+    def get_triples(self, url, location_search):
         g = rdflib.Graph()
+        self._get_triples(g, url, location_search)
         # add data portal
-        export_rdf.addMetadata(res['_source'], g, location_search)
         return g.serialize(format='nt')
 
     def get_urls(self, portal=None, columnlabels='none'):
