@@ -4,13 +4,14 @@ import argparse
 import datetime
 
 import structlog
+from elasticsearch import Elasticsearch
 from pymongo import MongoClient
 
 import profiler
 
 import rdflib
 from rdflib import URIRef, BNode, Literal
-from rdflib.namespace import Namespace, RDF, RDFS, DCTERMS, XSD, OWL
+from rdflib.namespace import Namespace, RDF, OWL
 
 import re
 from rfc3987 import get_compiled_pattern
@@ -26,7 +27,7 @@ PROV = Namespace("http://www.w3.org/ns/prov#")
 GN = Namespace("http://www.geonames.org/ontology#")
 WDT = Namespace("http://www.wikidata.org/prop/direct/")
 
-CSVWX = Namespace("http://data.wu.ac.at/csvwx#")
+CSVWX = Namespace("http://data.wu.ac.at/ns/csvwx#")
 
 
 log = structlog.get_logger()
@@ -54,6 +55,16 @@ def is_valid_url(references):
 def is_valid_uri(references):
     return bool(URI.match(references))
 
+
+def getTables(es, indexName, size, scroll='5m', source_exclude=None):
+    res = es.search(index=indexName, doc_type='table', size=size, scroll=scroll, _source_exclude=source_exclude)
+    scroll_id = res['_scroll_id']
+
+    while len(res['hits']['hits']) > 0:
+        for t in res['hits']['hits']:
+            yield t
+        res = es.scroll(scroll_id=scroll_id, scroll=scroll, _source_exclude=source_exclude)
+        scroll_id = res['_scroll_id']
 
 
 def addMetadata( obj, graph, location_search):
@@ -92,7 +103,7 @@ def addMetadata( obj, graph, location_search):
         graph.add((resource, CSVW.dialect, dialect))
         if d.get('encoding'):
             graph.add((dialect, CSVW.encoding, Literal(d['encoding'])))
-        if d.get('encoding'):
+        if d.get('delimiter'):
             graph.add((dialect, CSVW.delimiter, Literal(d['delimiter'])))
         if d.get('skipinitialspace') and d['skipinitialspace'] > 0:
             graph.add((dialect, CSVW.skipBlankRows, Literal(d['skipinitialspace'])))
@@ -259,6 +270,7 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('nuts')
     subparser.set_defaults(func=exportNUTS)
+
 
     args = parser.parse_args()
     client = MongoClient(args.host, args.port)
