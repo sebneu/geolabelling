@@ -194,7 +194,7 @@ class ESClient(object):
             if 'url_prefix' in conf['es']:
                 host['url_prefix'] = conf['es']['url_prefix']
 
-            self.es = Elasticsearch(hosts=[host])
+            self.es = Elasticsearch(hosts=[host], timeout=30, max_retries=10, retry_on_timeout=True)
             self.indexName = conf['es']['indexName']
         else:
             self.es = Elasticsearch()
@@ -287,7 +287,7 @@ class ESClient(object):
 
         limit = 100
         scroll = "5m"
-        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll=scroll, timeout='30s')
+        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll=scroll)
 
         while True:
             if '_scroll_id' in res:
@@ -388,7 +388,7 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
@@ -436,7 +436,7 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
