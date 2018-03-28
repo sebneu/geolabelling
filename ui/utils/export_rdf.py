@@ -11,7 +11,7 @@ import profiler
 
 import rdflib
 from rdflib import URIRef, BNode, Literal
-from rdflib.namespace import Namespace, RDF, OWL
+from rdflib.namespace import Namespace, RDF, OWL, XSD
 
 import re
 from rfc3987 import get_compiled_pattern
@@ -28,6 +28,7 @@ GN = Namespace("http://www.geonames.org/ontology#")
 WDT = Namespace("http://www.wikidata.org/prop/direct/")
 
 CSVWX = Namespace("http://data.wu.ac.at/ns/csvwx#")
+TIMEX = Namespace("data.wu.ac.at/odgraph/ns/timex#")
 
 
 log = structlog.get_logger()
@@ -93,6 +94,33 @@ def addMetadata( obj, graph, location_search):
     # add url to graph
     graph.add((resource, CSVW.url, ref))
     graph.add((dist, DCAT.accessURL, ref))
+
+    # add metadata entities
+    for m in obj.get('metadata_entities', []):
+        entity = location_search.format_entities(m)
+        graph.add((dataset_ref, CSVWX.refersToEntity, URIRef(entity)))
+
+    # add metadata entities
+    for m in obj.get('data_entities', []):
+        entity = location_search.format_entities(m)
+        graph.add((ref, CSVWX.refersToEntity, URIRef(entity)))
+
+    # add temporal info
+    if 'metadata_temp_start' in obj:
+        graph.add((dist, TIMEX.hasStartTime, Literal(obj['metadata_temp_start'], datatype=XSD.date)))
+    if 'metadata_temp_end' in obj:
+        graph.add((dist, TIMEX.hasEndTime, Literal(obj['metadata_temp_end'], datatype=XSD.date)))
+
+    if 'data_temp_start' in obj:
+        graph.add((ref, TIMEX.hasStartTime, Literal(obj['data_temp_start'], datatype=XSD.date)))
+    if 'data_temp_end' in obj:
+        graph.add((ref, TIMEX.hasEndTime, Literal(obj['data_temp_end'], datatype=XSD.date)))
+
+    if 'transaction_time' in obj:
+        graph.add((ref, TIMEX.transactionTime, Literal(obj['transaction_time'], datatype=XSD.date)))
+
+    if 'data_temp_pattern' in obj and obj['data_temp_pattern'] != 'varying':
+        graph.add((ref, TIMEX.hasTemporalPattern, Literal(obj['data_temp_pattern'])))
 
     # dialect
     # BNode: url + snapshot + CSVW.dialect
