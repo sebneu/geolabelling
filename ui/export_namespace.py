@@ -19,7 +19,8 @@ class GetURLs(Resource):
         columnlabels = request.args.get('columnlabels')
         es_search = current_app.config['ELASTICSEARCH']
         urls = es_search.get_urls(portal, columnlabels)
-        return jsonify(list(urls))
+        data = '\n'.join(urls)
+        return Response(data, mimetype='text/plain')
 
 
 @get_ns.route('/dataset')
@@ -40,7 +41,7 @@ class GetPortalRDF(Resource):
         es_search = current_app.config['ELASTICSEARCH']
         location_search = current_app.config['LOCATION_SEARCH']
         nt_file = es_search.get_portal(portal, location_search)
-        return Response(nt_file, mimetype='text')
+        return Response(nt_file, mimetype='text/plain')
 
 
 @rdf_ns.route('/dataset')
@@ -51,4 +52,4 @@ class GetCSVTriples(Resource):
         es_search = current_app.config['ELASTICSEARCH']
         location_search = current_app.config['LOCATION_SEARCH']
         nt_file = es_search.get_triples(url, location_search=location_search)
-        return Response(nt_file, mimetype='text')
+        return Response(nt_file, mimetype='text/plain')
