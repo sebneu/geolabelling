@@ -89,7 +89,8 @@ class GetCSV(Resource):
         url = request.args.get("url")
         rows = int(request.args.get('rows'))
         es_search = current_app.config['ELASTICSEARCH']
-        res = es_search.getRandomRows(url, rows)
+        location_search = current_app.config['LOCATION_SEARCH']
+        res = es_search.getRandomRows(url, rows, locationsearch=location_search)
         # generate csv file
         si = StringIO.StringIO()
         cw = csv.writer(si)

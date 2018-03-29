@@ -1,3 +1,0 @@
-{
-    "message": "TransportError(404, u'{\"_index\":\"eucsv\",\"_type\":\"table\",\"_id\":\"https://s3-eu-west-1.amazonaws.com/erg-cabinetoffice/epims/Register Data 22-12-2015.csv\",\"found\":false}')"
-}

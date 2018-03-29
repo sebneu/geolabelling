@@ -18,10 +18,11 @@ if __name__ == '__main__':
 
         for i, url in enumerate(resp.content.splitlines()):
             csv_file = requests.get(api_url + '/random/dataset?url={0}&rows={1}'.format(url, no_rows))
-            filename = p + '/' + str(i) + '.csv'
-            with open(filename, 'w') as f:
-                f.write(csv_file.content)
-            context.append([url, filename, p, '', ''])
+            if csv_file.status_code == 200:
+                filename = p + '/' + str(i) + '.csv'
+                with open(filename, 'w') as f:
+                    f.write(csv_file.content)
+                context.append([url, filename, p, '', ''])
 
     with open('index.csv', 'w') as f:
         csvw = csv.writer(f)
