@@ -168,8 +168,10 @@ class GeoTagger:
         for col in not_mapped:
             dates, confidence = self.datetime_column(dt['column'][col]['values']['exact'])
             if confidence > min_date_matches and all(1900 <= d.year <= 2050 for d in dates):
-                start = min(dates).strftime("%Y-%m-%d")
-                end = max(dates).strftime("%Y-%m-%d")
+                dt['column'][col]['dates'] = [d.strftime("%Y-%m-%d") if d else d for d in dates]
+
+                start = min(d for d in dates if d).strftime("%Y-%m-%d")
+                end = max(d for d in dates if d).strftime("%Y-%m-%d")
                 dt['data_temp_start'] = min(start, dt.get('data_temp_start', start))
                 dt['data_temp_end'] = max(end, dt.get('data_temp_end', end))
 
@@ -241,12 +243,13 @@ class GeoTagger:
         match = 0.
         result = []
         for i, v in enumerate(values):
+            d = ''
             try:
                 d = dateutil.parser.parse(v, ignoretz=True)
                 match += 1
-                result.append(d)
             except:
                 pass
+            result.append(d)
         confidence = match / len(values) if len(values) > 0 else 0.
         return result, confidence
 
