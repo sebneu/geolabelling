@@ -199,7 +199,7 @@ def addMetadata( obj, graph, location_search):
                         graph.add((rdflib.URIRef(entity), column, rdflib.Literal(v)))
 
                     if 'dates' in c and c['dates'][row_i]:
-                        graph.add((cell, TIMEX.hasTime, Literal(c['dates'][row_i], datatype=XSD.date)))
+                        graph.add((cell, CSVWX.hasTime, Literal(c['dates'][row_i], datatype=XSD.date)))
 
 
 
