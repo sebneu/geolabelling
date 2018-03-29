@@ -242,7 +242,7 @@ class GeoTagger:
         result = []
         for i, v in enumerate(values):
             try:
-                d = dateutil.parser.parse(v)
+                d = dateutil.parser.parse(v, ignoretz=True)
                 match += 1
                 result.append(d)
             except:
