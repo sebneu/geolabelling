@@ -2,9 +2,12 @@
 from flask import current_app, jsonify, request, Response
 from flask_restplus import Resource, inputs, Api
 from ui.rest_api import api
+import csv
+import StringIO
 
 get_ns = api.namespace('get', description='Operations to get the datasets')
 rdf_ns = api.namespace('rdf', description='Operations to convert the data to RDF')
+random_ns = api.namespace('random', description='Operations to generate random samples for evaluation')
 
 
 urls_parser = api.parser()
@@ -53,3 +56,47 @@ class GetCSVTriples(Resource):
         location_search = current_app.config['LOCATION_SEARCH']
         nt_file = es_search.get_triples(url, location_search=location_search)
         return Response(nt_file, mimetype='text/plain')
+
+
+
+randurls_parser = api.parser()
+randurls_parser.add_argument('urls', type=int, default=10)
+randurls_parser.add_argument('columnlabels', type=bool, default=True)
+
+@get_ns.expect(randurls_parser)
+@random_ns.route('/urls')
+@get_ns.doc(params={'portal': 'filter by urls from portal'}, description="Returns all indexed urls")
+class GetURLs(Resource):
+    def get(self):
+        portal = request.args.get("portal")
+        columnlabels = True if request.args.get('columnlabels')=='true' else False
+        no_urls = int(request.args.get('urls'))
+        es_search = current_app.config['ELASTICSEARCH']
+        res = es_search.getRandomURLs(portal, no_urls, columnlabels)
+        txt_file = '\n'.join(res)
+        return Response(txt_file, mimetype='text/plain')
+
+
+
+randrows_parser = api.parser()
+randrows_parser.add_argument('rows', type=int, default=10)
+
+@get_ns.expect(randrows_parser)
+@random_ns.route('/dataset')
+@random_ns.doc(params={'url': "The CSV's URL"}, description="Get an indexed CSV by its URL")
+class GetCSV(Resource):
+    def get(self):
+        url = request.args.get("url")
+        rows = int(request.args.get('rows'))
+        es_search = current_app.config['ELASTICSEARCH']
+        res = es_search.getRandomRows(url, rows)
+        # generate csv file
+        si = StringIO.StringIO()
+        cw = csv.writer(si)
+        for row in res:
+            cw.writerow(row)
+        csv_file = si.getvalue().strip('\r\n')
+        return Response(csv_file, mimetype='text/csv')
+
+
+

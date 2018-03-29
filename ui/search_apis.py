@@ -6,6 +6,7 @@ import yaml
 import pymongo
 from pymongo import MongoClient
 import urllib
+import random
 from elasticsearch import Elasticsearch
 
 from openstreetmap.osm_inserter import get_geonames_url
@@ -211,6 +212,37 @@ class ESClient(object):
                           _source_include=include)
         return res
 
+    def _get_labelled_rows(self, doc):
+        rows = []
+        for row in doc['_source'].get('row', []):
+            r = []
+            row_v = row['values']['value']
+            if 'entities' in row:
+                row_e = row['entities']
+            else:
+                row_e = ['' for _ in range(len(row_v))]
+            for v, e in zip(row_v, row_e):
+                r.append(v.encode('utf-8'))
+                r.append(e)
+            rows.append(r)
+        return rows
+
+    def getRandomRows(self, url, sample_size):
+        res = self.get(url, columns=False)
+        d = []
+        header = _get_doc_headers(res, False)
+        if header:
+            r = []
+            for h in header:
+                r.append(h.encode('utf-8'))
+                r.append('')
+            d.append(r)
+        rows = self._get_labelled_rows(res)
+        if len(rows) >= sample_size:
+            return d + random.sample(rows, sample_size)
+        else:
+            return d + rows
+
     def get_portal(self, portal_id, location_search):
         g = rdflib.Graph()
         for u in self.get_urls(portal=portal_id):
@@ -302,6 +334,45 @@ class ESClient(object):
 
             for l in urls:
                 yield l['_id']
+
+    def getRandomURLs(self, portal, no_urls, columnlabels):
+        if portal:
+            p = {"nested": {"path": "portal", "query": {"term": {"portal.id": portal}}}}
+        else:
+            p = {"match_all": {}}
+
+        q = {
+            "_source": "_id",
+            "query": {
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "must": [
+                                p, {
+                                    "nested": {
+                                        "path": "column",
+                                        "query": {
+                                            "exists": {
+                                                "field": "column.entities" if columnlabels else "column.values"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "functions": [{
+                        "random_score": {
+                            "seed": "1477072619038"
+                        }
+                    }]
+                }
+            }
+        }
+        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=no_urls)
+        urls = [u['_id'] for u in res['hits']['hits']]
+        return urls
+
 
     def exists(self, url):
         res = self.es.exists(index=self.indexName, doc_type='table', id=url)
