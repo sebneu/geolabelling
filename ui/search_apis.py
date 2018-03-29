@@ -212,13 +212,13 @@ class ESClient(object):
                           _source_include=include)
         return res
 
-    def _get_labelled_rows(self, doc):
+    def _get_labelled_rows(self, doc, locationsearch):
         rows = []
         for row in doc['_source'].get('row', []):
             r = []
             row_v = row['values']['value']
             if 'entities' in row:
-                row_e = row['entities']
+                row_e = [locationsearch.format_entities(e) for e in row['entities']]
             else:
                 row_e = ['' for _ in range(len(row_v))]
             for v, e in zip(row_v, row_e):
@@ -227,7 +227,7 @@ class ESClient(object):
             rows.append(r)
         return rows
 
-    def getRandomRows(self, url, sample_size):
+    def getRandomRows(self, url, sample_size, locationsearch):
         res = self.get(url, columns=False)
         d = []
         header = _get_doc_headers(res, False)
@@ -237,7 +237,7 @@ class ESClient(object):
                 r.append(h.encode('utf-8'))
                 r.append('')
             d.append(r)
-        rows = self._get_labelled_rows(res)
+        rows = self._get_labelled_rows(res, locationsearch)
         if len(rows) >= sample_size:
             return d + random.sample(rows, sample_size)
         else:
@@ -363,7 +363,7 @@ class ESClient(object):
                     },
                     "functions": [{
                         "random_score": {
-                            "seed": "1477072619038"
+                            "seed": "1470617293028"
                         }
                     }]
                 }
