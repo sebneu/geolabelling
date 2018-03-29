@@ -171,32 +171,36 @@ def addMetadata( obj, graph, location_search):
             graph.add((column, CSVW.name, Literal(h)))
             graph.add((column, CSVW.datatype, col_types[i]))
 
-            if 'entities' in c:
-                row_i = 0
-                for e, v in zip(c['entities'], c['values']['exact']):
-                    if e:
-                        # representation 1
+            if 'entities' in c or 'dates' in c:
+                for row_i, v in enumerate(c['values']['exact']):
+                    # BNode: url + snapshot + CSVW.column + col_i + value + row_i
+                    bnode_hash = hashlib.sha1(
+                        url + str(snapshot) + CSVW.column.n3() + 'col' + str(i) + 'row' + str(row_i))
+                    cell = BNode(bnode_hash.hexdigest())
+                    if is_valid_uri(url):
+                        row_url = URIRef(url + '#row=' + str(row_i))
+                    else:
+                        # BNode: url + snapshot + col_i + CSVWX.row + row_i
+                        bnode_hash = hashlib.sha1(url + str(snapshot) + str(i) + CSVWX.row.n3() + str(row_i))
+                        row_url = BNode(bnode_hash.hexdigest())
+
+                    graph.add((cell, RDF.type, CSVWX.Cell))
+                    graph.add((cell, CSVWX.rowURL, row_url))
+                    graph.add((cell, CSVWX.columnURL, column))
+                    graph.add((cell, RDF.value, Literal(v)))
+
+                    if 'entities' in c and c['entities'][row_i]:
+                        e = c['entities'][row_i]
+
                         entity = location_search.format_entities(e)
+                        graph.add((cell, CSVWX.refersToEntity, URIRef(entity)))
+
+                        # alternative representation
                         graph.add((rdflib.URIRef(entity), column, rdflib.Literal(v)))
 
-                        # representation 2
-                        # BNode: url + snapshot + CSVW.column + col_i + value + row_i
-                        bnode_hash = hashlib.sha1(url + str(snapshot) + CSVW.column.n3() + 'col' + str(i) + 'row' + str(row_i))
-                        cell = BNode(bnode_hash.hexdigest())
-                        if is_valid_uri(url):
-                            row_url = URIRef(url + '#row=' + str(row_i))
-                        else:
-                            # BNode: url + snapshot + col_i + CSVWX.row + row_i
-                            bnode_hash = hashlib.sha1(url + str(snapshot) + str(i) + CSVWX.row.n3() + str(row_i))
-                            row_url = BNode(bnode_hash.hexdigest())
+                    if 'dates' in c and c['dates'][row_i]:
+                        graph.add((cell, TIMEX.hasTime, Literal(c['dates'][row_i], datatype=XSD.date)))
 
-                        graph.add((cell, RDF.type, CSVWX.Cell))
-                        graph.add((cell, CSVWX.rowURL, row_url))
-                        graph.add((cell, CSVWX.columnURL, column))
-                        graph.add((cell, RDF.value, Literal(v)))
-
-                        graph.add((cell, CSVWX.refersToEntity, URIRef(entity)))
-                    row_i += 1
 
 
 
