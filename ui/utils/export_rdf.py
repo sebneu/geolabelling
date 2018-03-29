@@ -28,7 +28,7 @@ GN = Namespace("http://www.geonames.org/ontology#")
 WDT = Namespace("http://www.wikidata.org/prop/direct/")
 
 CSVWX = Namespace("http://data.wu.ac.at/ns/csvwx#")
-TIMEX = Namespace("data.wu.ac.at/odgraph/ns/timex#")
+TIMEX = Namespace("http://data.wu.ac.at/odgraph/ns/timex#")
 
 
 log = structlog.get_logger()
@@ -154,12 +154,18 @@ def addMetadata( obj, graph, location_search):
         for i, c in enumerate(cols):
             if 'header' in c:
                 h = c['header'][0]['exact'][0].replace(' ', '_')
+                h = re.sub(r"[\n\t\s]*", "", h)
             else:
                 h = 'column' + str(i)
             # BNode: url + snapshot + CSVW.column + col_i
             #bnode_hash = hashlib.sha1(url + str(snapshot) + CSVW.column.n3() + str(i))
             #column = BNode(bnode_hash.hexdigest())
-            column = rdflib.URIRef(url + '#' + h)
+            if is_valid_uri(url):
+                column = rdflib.URIRef(url + '#' + h)
+            else:
+                # BNode: url + snapshot + CSVW.column + col_i
+                bnode_hash = hashlib.sha1(url + str(snapshot) + CSVW.column.n3() + str(i))
+                column = BNode(bnode_hash.hexdigest())
 
             graph.add((tableschema, CSVW.column, column))
             graph.add((column, CSVW.name, Literal(h)))
@@ -177,7 +183,13 @@ def addMetadata( obj, graph, location_search):
                         # BNode: url + snapshot + CSVW.column + col_i + value + row_i
                         bnode_hash = hashlib.sha1(url + str(snapshot) + CSVW.column.n3() + 'col' + str(i) + 'row' + str(row_i))
                         cell = BNode(bnode_hash.hexdigest())
-                        row_url = URIRef(url + '#row=' + str(row_i))
+                        if is_valid_uri(url):
+                            row_url = URIRef(url + '#row=' + str(row_i))
+                        else:
+                            # BNode: url + snapshot + col_i + CSVWX.row + row_i
+                            bnode_hash = hashlib.sha1(url + str(snapshot) + str(i) + CSVWX.row.n3() + str(row_i))
+                            row_url = BNode(bnode_hash.hexdigest())
+
                         graph.add((cell, RDF.type, CSVWX.Cell))
                         graph.add((cell, CSVWX.rowURL, row_url))
                         graph.add((cell, CSVWX.columnURL, column))
