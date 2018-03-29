@@ -268,9 +268,9 @@ def exportGeoNames(client, args):
         if 'name' in geo_id:
             g.add((URIRef(geo_id['_id']), GN.name, Literal(geo_id['name'])))
         if 'parent' in geo_id:
-            g.add((URIRef(geo_id['_id']), GN.parentFeature, Literal(geo_id['parent'])))
+            g.add((URIRef(geo_id['_id']), GN.parentFeature, URIRef(geo_id['parent'])))
         if 'country' in geo_id:
-            g.add((URIRef(geo_id['_id']), GN.parentCountry, Literal(geo_id['country'])))
+            g.add((URIRef(geo_id['_id']), GN.parentCountry, URIRef(geo_id['country'])))
 
         if 'wikidata' in geo_id:
             g.add((URIRef(geo_id['_id']), OWL.sameAs, URIRef(geo_id['wikidata'])))
