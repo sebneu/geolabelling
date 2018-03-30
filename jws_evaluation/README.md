@@ -5,6 +5,7 @@ We manually assessed the datasets' labels by assigning the one (or more) of the 
 
 | Error class                 |  index.csv  | description |
 | -------------               |-----  |-----|
+| Correct label(s)            | `c`   |  We check if there are some correct labels in dataset.  |
+| Not assigned / Missing      | `m`   |  There are potentially geo-references in the dataset but the respective labels are not in the knowledge graph or the algorithm could not detect the entities.  |
 | Incorrect GeoNames label(s) | `g`   |  Some of the individual GeoNames column labels are incorrect.  |
 | Incorrect OSM label(s)      | `o`   |  Some of the individual OpenStreetMap (OSM) column labels are incorrect.  |
-| Not assigned                | `m`   |  There are potentially geo-references in the dataset but the respective labels are not in the knowledge graph or the algorithm could not detect the entities.  |
