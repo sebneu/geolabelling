@@ -3,7 +3,7 @@ import os
 import csv
 
 if __name__ == '__main__':
-    api_url = 'http://0.0.0.0:2340/odgraph/api/v1'
+    api_url = 'http://data.wu.ac.at/odgraph/api/v1'
     portals = ["data_gov_gr", "datos_gob_es", "www_data_gouv_fr", "data_gv_at", "offenedaten_de", "data_overheid_nl", "data_gov_ie", "opingogn_is", "data_gov_sk", "govdata_de", "data_gov_uk"]
 
     no_urls = 10
