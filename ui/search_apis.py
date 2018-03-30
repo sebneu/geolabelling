@@ -218,7 +218,27 @@ class ESClient(object):
             r = []
             row_v = row['values']['value']
             if 'entities' in row:
-                row_e = [locationsearch.format_entities(e) for e in row['entities']]
+                row_e = [ ]
+                for e in row['entities']:
+                    if not e:
+                        row_e.append('')
+                    else:
+                        if e.startswith('http://sws.geonames.org/'):
+                            geo_id = locationsearch.get(e)
+                            name = geo_id.get('name', '')
+                            parent = locationsearch.get(geo_id['parent'])['name'] if 'parent' in geo_id else ''
+                            country = locationsearch.get(geo_id['country'])['name'] if 'country' in geo_id else ''
+                        else:
+                            osm_id = locationsearch.get_osm(e)
+                            name = osm_id.get('name', '')
+                            parent = ''
+                            country = ''
+                            if 'geonames_ids' in osm_id and len(osm_id['geonames_ids']) > 0:
+                                p_e = locationsearch.get(get_geonames_url(osm_id['geonames_ids'][0]))
+                                parent = p_e['name']
+                                country = locationsearch.get(p_e['country'])['name'] if 'country' in p_e else ''
+                        form_e = locationsearch.format_entities(e)
+                        row_e.append(' '.join([name,parent,country,form_e]).encode('utf-8'))
             else:
                 row_e = ['' for _ in range(len(row_v))]
             for v, e in zip(row_v, row_e):
