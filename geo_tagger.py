@@ -167,7 +167,7 @@ class GeoTagger:
         # try osm mapping
         for col in not_mapped:
             dates, confidence = self.datetime_column(dt['column'][col]['values']['exact'])
-            if confidence > min_date_matches and all(1900 <= d.year <= 2050 for d in dates):
+            if confidence > min_date_matches and all(1900 <= d.year <= 2050 if d else True for d in dates):
                 dt['column'][col]['dates'] = [d.strftime("%Y-%m-%d") if d else d for d in dates]
 
                 start = min(d for d in dates if d).strftime("%Y-%m-%d")
