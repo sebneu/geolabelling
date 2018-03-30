@@ -255,7 +255,8 @@ class GeoTagger:
         return result, confidence
 
 
-    def datetime_pattern(self, dates):
+    def datetime_pattern(self, all_dates):
+        dates = [d for d in all_dates if d]
         # varying, static, daily, weekly, monthly, quarterly, yearly, other
         if len(set(dates)) == 1:
             return 'static'
