@@ -383,7 +383,7 @@ class ESClient(object):
                     },
                     "functions": [{
                         "random_score": {
-                            "seed": "1470617293028"
+                            "seed": "1440616293078"
                         }
                     }]
                 }

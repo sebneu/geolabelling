@@ -111,13 +111,13 @@ def start():
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
     app.config['ELASTICSEARCH'] = search_apis.ESClient(conf=config)
 
-    blueprint = Blueprint('api', __name__, url_prefix='/odgraph2/api/v1')
+    blueprint = Blueprint('api', __name__, url_prefix='/odgraph/api/v1')
     api.init_app(blueprint)
     api.add_namespace(get_ns)
     api.add_namespace(rdf_ns)
 
     app.register_blueprint(blueprint)
-    app.register_blueprint(ui, url_prefix='/odgraph2')
+    app.register_blueprint(ui, url_prefix='/odgraph')
 
     app.wsgi_app = ReverseProxied(app.wsgi_app)
     tr = WSGIContainer(app)
