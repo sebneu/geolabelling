@@ -55,17 +55,18 @@ def get_temporal_information(dist, dataset, heideltime_path='heideltime-standalo
     dates = []
     # priorities to different sources of datetime information: dist > dataset info
     try:
-        for value in [dist_name, dist_description, dataset_name, dataset_description, ', '.join(keywords)]:
-            # first escape any xml escaped characters
-            esc_v = escape(value)
-            root = get_heideltime_annotations(esc_v, heideltime_path, language)
-            for t in root:
-                if t.attrib['type'] == 'DATE':
-                    v = t.attrib['value']
-                    date = parser.parse(v)
-                    dates.append(date)
-            if len(dates) > 0:
-                break
+        if heideltime_path:
+            for value in [dist_name, dist_description, dataset_name, dataset_description, ', '.join(keywords)]:
+                # first escape any xml escaped characters
+                esc_v = escape(value)
+                root = get_heideltime_annotations(esc_v, heideltime_path, language)
+                for t in root:
+                    if t.attrib['type'] == 'DATE':
+                        v = t.attrib['value']
+                        date = parser.parse(v)
+                        dates.append(date)
+                if len(dates) > 0:
+                    break
     except Exception as e:
         log.error('Heideltime error: ' + dataset_name + ' , language: ' + language)
         log.error(e)
