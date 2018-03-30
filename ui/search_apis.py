@@ -212,9 +212,9 @@ class ESClient(object):
                           _source_include=include)
         return res
 
-    def _get_labelled_rows(self, doc, locationsearch):
+    def _get_labelled_rows(self, in_rows, locationsearch):
         rows = []
-        for row in doc['_source'].get('row', []):
+        for row in in_rows:
             r = []
             row_v = row['values']['value']
             if 'entities' in row:
@@ -257,11 +257,15 @@ class ESClient(object):
                 r.append(h.encode('utf-8'))
                 r.append('')
             d.append(r)
-        rows = self._get_labelled_rows(res, locationsearch)
-        if len(rows) >= sample_size:
-            return d + random.sample(rows, sample_size)
+        in_rows = res['_source'].get('row', [])
+
+        if len(in_rows) >= sample_size:
+            rows = random.sample(in_rows, sample_size)
         else:
-            return d + rows
+            rows = in_rows
+        rows = self._get_labelled_rows(rows, locationsearch)
+        return d + rows
+
 
     def get_portal(self, portal_id, location_search):
         g = rdflib.Graph()
