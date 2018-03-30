@@ -244,11 +244,12 @@ class GeoTagger:
         result = []
         for i, v in enumerate(values):
             d = ''
-            try:
-                d = dateutil.parser.parse(v, ignoretz=True)
-                match += 1
-            except:
-                pass
+            if v and len(v.strip()) > 0:
+                try:
+                    d = dateutil.parser.parse(v, ignoretz=True)
+                    match += 1
+                except:
+                    pass
             result.append(d)
         confidence = match / len(values) if len(values) > 0 else 0.
         return result, confidence

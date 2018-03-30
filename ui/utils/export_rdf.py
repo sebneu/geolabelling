@@ -11,7 +11,7 @@ import profiler
 
 import rdflib
 from rdflib import URIRef, BNode, Literal
-from rdflib.namespace import Namespace, RDF, OWL, XSD
+from rdflib.namespace import Namespace, RDF, RDFS, OWL, XSD
 
 import re
 from rfc3987 import get_compiled_pattern
@@ -28,7 +28,8 @@ GN = Namespace("http://www.geonames.org/ontology#")
 WDT = Namespace("http://www.wikidata.org/prop/direct/")
 
 CSVWX = Namespace("http://data.wu.ac.at/ns/csvwx#")
-TIMEX = Namespace("http://data.wu.ac.at/odgraph/ns/timex#")
+TIMEX = Namespace("http://data.wu.ac.at/ns/timex#")
+OSMX = Namespace("http://data.wu.ac.at/ns/osmx#")
 
 
 log = structlog.get_logger()
@@ -217,7 +218,7 @@ def exportOSM(client, args):
             osm_id = osm['_id']
             c_url = osm_url + osm['osm_type'] + '/' + osm_id
             if 'name' in osm:
-                g.add((URIRef(c_url), GN.name, Literal(osm['name'])))
+                g.add((URIRef(c_url), RDFS.label, Literal(osm['name'])))
 
             if 'geonames_ids' in osm:
                 for geo_id in osm['geonames_ids']:
@@ -242,7 +243,7 @@ def exportNUTS(client, args):
         n = URIRef('http://dd.eionet.europa.eu/vocabularyconcept/common/nuts/' + nuts['_id'])
         g.add((n, WDT.P605, Literal(nuts['_id'])))
         if 'name' in nuts:
-            g.add((n, GN.name, Literal(nuts['name'])))
+            g.add((n, RDFS.label, Literal(nuts['name'])))
 
         if 'geonames' in nuts:
             g.add((n, OWL.sameAs, URIRef(nuts['geonames'])))
@@ -270,7 +271,7 @@ def exportGeoNames(client, args):
     print 'GeoNames data'
     for i, geo_id in enumerate(db.geonames.find()):
         if 'name' in geo_id:
-            g.add((URIRef(geo_id['_id']), GN.name, Literal(geo_id['name'])))
+            g.add((URIRef(geo_id['_id']), RDFS.label, Literal(geo_id['name'])))
         if 'parent' in geo_id:
             g.add((URIRef(geo_id['_id']), GN.parentFeature, URIRef(geo_id['parent'])))
         if 'country' in geo_id:
@@ -299,6 +300,26 @@ def exportGeoNames(client, args):
 
     g.serialize(destination='geonames' + str(graph_count) + '.nt', format='nt')
 
+
+
+def exportCountries(client, args):
+    db = client.geostore
+
+    g = rdflib.Graph()
+    print 'Countries'
+    for i, geo_entity in enumerate(db.countries.find()):
+        country = URIRef(geo_entity['_id'])
+        if 'iso' in geo_entity:
+            g.add((country, GN.countryCode, Literal(geo_entity['iso'])))
+            g.add((country, WDT.P297, Literal(geo_entity['iso'])))
+        if 'iso3' in geo_entity:
+            g.add((country, WDT.P298, Literal(geo_entity['iso3'])))
+        if 'osm_data' in geo_entity:
+            g.add((country, OSMX.downloadExtract, URIRef(geo_entity['osm_data'])))
+
+    g.serialize(destination='countries.nt', format='nt')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='rdf-export')
     parser.add_argument('--host', default='localhost')
@@ -314,6 +335,9 @@ if __name__ == "__main__":
 
     subparser = subparsers.add_parser('nuts')
     subparser.set_defaults(func=exportNUTS)
+
+    subparser = subparsers.add_parser('countries')
+    subparser.set_defaults(func=exportCountries)
 
 
     args = parser.parse_args()
