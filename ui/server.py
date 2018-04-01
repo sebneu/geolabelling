@@ -75,7 +75,7 @@ def parseArgs():
 
     pa.add_argument('-c','--config', help="config file", dest='config')
     pa.add_argument('-p','--port', help="Set port of UI (default is 2341)", type=int, dest='port', default=2341)
-    
+    pa.add_argument('--prefix', help="Set URL prefix", default='odgraphsearch')
     return pa.parse_args()
 
 
@@ -104,24 +104,25 @@ def start():
     dbhost=config['db']['host']
     dbport=config['db']['port']
 
-    log.info('Starting CSVEngine on http://localhost:{}/'.format(port))
+    url_prefix = args.prefix
+
+    log.info('Starting ODGraph UI on http://localhost:{}/'.format(port) + url_prefix + '/')
 
     app.config['MAX_CONTENT_LENGTH'] = maxFileSize
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
     app.config['ELASTICSEARCH'] = search_apis.ESClient(conf=config)
 
-    blueprint = Blueprint('api', __name__, url_prefix='/odgraph/api/v1')
+    blueprint = Blueprint('api', __name__, url_prefix='/' + url_prefix + '/api/v1')
     api.init_app(blueprint)
     api.add_namespace(get_ns)
     api.add_namespace(rdf_ns)
 
     app.register_blueprint(blueprint)
-    app.register_blueprint(ui, url_prefix='/odgraph')
+    app.register_blueprint(ui, url_prefix='/' + url_prefix)
 
     app.wsgi_app = ReverseProxied(app.wsgi_app)
     tr = WSGIContainer(app)
-
 
     app.run(debug=True, port=port,host='0.0.0.0')
 

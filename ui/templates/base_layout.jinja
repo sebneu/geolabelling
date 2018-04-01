@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <title>
-            {% block maintitle %} {% endblock %} Geo-search over Open Data
+            {% block maintitle %} {% endblock %} Spatio-temporal search in Open Data
         </title>
         <meta charset="utf-8">
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -46,7 +46,7 @@
         <header id="header" class="ui vertical segment">
             <h1 class="ui header fifteen wide column">
                 <div class="content">
-                    Geo-search over Open Data
+                    Spatio-temporal search in Open Data
                     <div class="sub header"></div>
                 </div>
                 <a href="http://data.wu.ac.at/">
@@ -59,13 +59,13 @@
         <nav id="mainnav" class="ui  fluid secondary stackable pointing icon menu " >
             {% set navigation_bar = [
                     ('ui.index','search', 'Search', 'search'),
-                    ('ui.kgsearch','kgsearch', 'Knowledge Graph', 'kgsearch'),
                     ('ui.sparql','sparql', "SPARQL", 'sparql'),
                     ('ui.api','api', "API", 'api'),
                     ('ui.about','about', 'About', 'about')
                 ]
             -%}
                 {#,
+                    ('ui.kgsearch','kgsearch', 'Knowledge Graph', 'kgsearch'),
                     ('ui.geotagging', 'geotagging', 'Geo Tagging','table')
                 #}
             {% set active_page = active_page|default('search') -%}
