@@ -108,17 +108,17 @@ def addMetadata( obj, graph, location_search):
 
     # add temporal info
     if 'metadata_temp_start' in obj:
-        graph.add((dist, TIMEX.hasStartTime, Literal(obj['metadata_temp_start'], datatype=XSD.dateTime)))
+        graph.add((dist, TIMEX.hasStartTime, Literal(obj['metadata_temp_start'] + 'T00:00:00', datatype=XSD.dateTime)))
     if 'metadata_temp_end' in obj:
-        graph.add((dist, TIMEX.hasEndTime, Literal(obj['metadata_temp_end'], datatype=XSD.dateTime)))
+        graph.add((dist, TIMEX.hasEndTime, Literal(obj['metadata_temp_end'] + 'T00:00:00', datatype=XSD.dateTime)))
 
     if 'data_temp_start' in obj:
-        graph.add((ref, TIMEX.hasStartTime, Literal(obj['data_temp_start'], datatype=XSD.dateTime)))
+        graph.add((ref, TIMEX.hasStartTime, Literal(obj['data_temp_start'] + 'T00:00:00', datatype=XSD.dateTime)))
     if 'data_temp_end' in obj:
-        graph.add((ref, TIMEX.hasEndTime, Literal(obj['data_temp_end'], datatype=XSD.dateTime)))
+        graph.add((ref, TIMEX.hasEndTime, Literal(obj['data_temp_end'] + 'T00:00:00', datatype=XSD.dateTime)))
 
     if 'transaction_time' in obj:
-        graph.add((ref, TIMEX.transactionTime, Literal(obj['transaction_time'], datatype=XSD.dateTime)))
+        graph.add((ref, TIMEX.transactionTime, Literal(obj['transaction_time'] + 'T00:00:00', datatype=XSD.dateTime)))
 
     if 'data_temp_pattern' in obj and obj['data_temp_pattern'] != 'varying':
         graph.add((ref, TIMEX.hasTemporalPattern, Literal(obj['data_temp_pattern'])))
@@ -201,7 +201,7 @@ def addMetadata( obj, graph, location_search):
                         graph.add((rdflib.URIRef(entity), column, rdflib.Literal(v)))
 
                     if 'dates' in c and c['dates'][row_i]:
-                        graph.add((cell, CSVWX.hasTime, Literal(c['dates'][row_i], datatype=XSD.dateTime)))
+                        graph.add((cell, CSVWX.hasTime, Literal(c['dates'][row_i] + 'T00:00:00', datatype=XSD.dateTime)))
 
 
 
