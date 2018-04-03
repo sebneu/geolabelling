@@ -185,10 +185,10 @@ def addMetadata( obj, graph, location_search):
                         bnode_hash = hashlib.sha1(url + str(snapshot) + str(i) + CSVWX.row.n3() + str(row_i))
                         row_url = BNode(bnode_hash.hexdigest())
 
-                    graph.add((cell, RDF.type, CSVW.Cell))
-                    graph.add((cell, CSVW.rownum, row_i))
-                    graph.add((cell, CSVWX.rowURL, row_url))
                     graph.add((column, CSVWX.cell, cell))
+                    graph.add((cell, RDF.type, CSVW.Cell))
+                    graph.add((cell, CSVW.rownum, Literal(row_i)))
+                    graph.add((cell, CSVWX.rowURL, row_url))
                     graph.add((cell, RDF.value, Literal(v)))
 
                     if 'entities' in c and c['entities'][row_i]:
