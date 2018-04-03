@@ -186,6 +186,7 @@ def addMetadata( obj, graph, location_search):
                         row_url = BNode(bnode_hash.hexdigest())
 
                     graph.add((cell, RDF.type, CSVWX.Cell))
+                    graph.add((cell, CSVWX.rowNum, row_i))
                     graph.add((cell, CSVWX.rowURL, row_url))
                     graph.add((cell, CSVWX.columnURL, column))
                     graph.add((cell, RDF.value, Literal(v)))
