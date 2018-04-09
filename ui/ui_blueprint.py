@@ -55,7 +55,7 @@ def index():
     locationsearch = current_app.config['LOCATION_SEARCH']
     search_api = url_for('.search')
     data = {'randomEntities': []}
-    e = locationsearch.get('http://sws.geonames.org/3220837/')
+    e = locationsearch.get('http://sws.geonames.org/2643741/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
@@ -67,13 +67,13 @@ def index():
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
     data['randomEntities'].append(
         {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
-    e = locationsearch.get('http://sws.geonames.org/2769848/')
+    e = locationsearch.get('http://sws.geonames.org/3038032/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
     data['randomEntities'].append(
         {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
-    e = locationsearch.get('http://sws.geonames.org/2842567/')
+    e = locationsearch.get('http://sws.geonames.org/2772614/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})

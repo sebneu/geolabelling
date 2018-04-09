@@ -154,6 +154,7 @@ def addMetadata( obj, graph, location_search):
 
         for i, c in enumerate(cols):
             if 'header' in c:
+                # TODO use urlencode
                 h = c['header'][0]['exact'][0].replace(' ', '_')
                 h = re.sub(r"[\n\t\s]*", "", h)
             else:
