@@ -33,7 +33,6 @@
     yasqe:{sparql:{endpoint:'http://data.wu.ac.at/odgraphsearch/query/'}}
   });
   tab = yasgui.current()
-  console.log(tab)
   if(tab) {
      tab.yasqe.addPrefixes({"timex": "http://data.wu.ac.at/ns/timex#", "csvwx": "http://data.wu.ac.at/ns/csvwx#"})
   }
