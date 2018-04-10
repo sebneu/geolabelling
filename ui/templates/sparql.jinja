@@ -29,15 +29,11 @@
 
 
 {% block script %}
-  var namespaces = "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\
-PREFIX dcat: <http://www.w3.org/ns/dcat#>\
-PREFIX csvw: <http://www.w3.org/ns/csvw#>\
-PREFIX gn: <http://www.geonames.org/ontology#>\
-PREFIX timex: <http://data.wu.ac.at/ns/timex#>\
-PREFIX csvwx: <http://data.wu.ac.at/ns/csvwx#>"
-  console.log(namespaces)
   var yasgui = YASGUI(document.getElementById("yasgui"), {
-    yasqe:{sparql:{endpoint:'http://data.wu.ac.at/odgraph/query/geodata/query'}}
+    yasqe:{sparql:{endpoint:'http://data.wu.ac.at/odgraphsearch/query/'}}
   });
-  yasgui.current().setQuery(namespaces)
+  tab = yasgui.current()
+  if(tab) {
+     tab.yasqe.addPrefixes({"timex": "http://data.wu.ac.at/ns/timex#", "csvwx": "http://data.wu.ac.at/ns/csvwx#"})
+  }
 {% endblock %}
