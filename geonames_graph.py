@@ -406,7 +406,11 @@ def geonames_to_mongo(client, args):
                     # postal code
                     postalCodes = [unicode(c) for c in g.objects(s, GN.postalCode)]
                     if postalCodes:
-                        entry['postalCodes'] = unicode(postalCodes)
+                        entry['postalCodes'] = postalCodes
+                    # wikipedia article
+                    wikiarticle = g.value(subject=s, predicate=GN.wikipediaArticle)
+                    if wikiarticle:
+                        entry['wikipedia'] = wikiarticle
 
                     geonames.append(entry)
 
