@@ -4,10 +4,46 @@ from flask_restplus import Resource, inputs, Api
 from ui.rest_api import api
 import csv
 import StringIO
+import sparql
+
 
 get_ns = api.namespace('get', description='Operations to get the datasets')
 rdf_ns = api.namespace('rdf', description='Operations to convert the data to RDF')
+temporal_ns = api.namespace('temporal', description='Operations to get the temporal KG')
 random_ns = api.namespace('random', description='Operations to generate random samples for evaluation')
+
+
+PERIOD_QUERY = "PREFIX timex: <http://data.wu.ac.at/ns/timex#> \n" \
+               "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" \
+               "SELECT ?name ?value ?start ?end WHERE {{ " +\
+               "  ?value rdfs:label ?name. " +\
+               "  ?name bif:contains \"\'{0}*\'\" . " +\
+               "  ?value timex:hasStartTime ?start ; "+ \
+               "       timex:hasEndTime ?end . }} "
+
+
+@temporal_ns.route('/periods')
+@temporal_ns.doc(params={'q': 'filter'}, description="Returns all time periods")
+class GetPeriods(Resource):
+    def __init__(self, *args, **kwargs):
+        super(GetPeriods, self).__init__(*args, **kwargs)
+
+        sparql_endpoint = current_app.config['SPARQL']
+        self.s = sparql.Service(sparql_endpoint, "utf-8", "GET")
+
+    def get(self):
+        q = request.args.get("q")
+        # only query for 3 or more letters
+        data = {'success': False}
+        if len(q) >= 3:
+            statement = PERIOD_QUERY.format(q)
+            result = self.s.query(statement)
+            if result:
+                data['results'] = []
+                for r in result.fetchone():
+                    data['success'] = True
+                    data['results'].append({'name': r[0].value, 'value': r[1].value, 'start': r[2].value, 'end': r[3].value})
+        return jsonify(data)
 
 
 urls_parser = api.parser()

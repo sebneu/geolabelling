@@ -44,7 +44,17 @@
                 <div class="row">
                     <p style="margin-bottom: 1cm"/>
                 </div>
-                <div id="slider"></div>
+
+                <div class="ui grid">
+                    <div class="four wide column">
+                        <div class="ui fluid search selection dropdown" id="period">
+                              <div class="default text">Select Period</div>
+                        </div>
+                    </div>
+                    <div class="twelve wide column">
+                        <div id="slider"></div>
+                    </div>
+                </div>
             </div>
             <div class="four wide right aligned column">
                 <div class="row">
@@ -474,5 +484,14 @@
             window.location.href = q;
         }
     }
+
+    $("#period").dropdown({
+        apiSettings: {
+          // this url returns a list of periods
+          url: 'api/v1/temporal/periods?q={query}'
+        },
+        filterRemoteData: true
+      })
+    ;
 
 {% endblock %}

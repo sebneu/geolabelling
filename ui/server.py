@@ -108,6 +108,7 @@ def start():
 
     log.info('Starting ODGraph UI on http://localhost:{}/'.format(port) + url_prefix + '/')
 
+    app.config['SPARQL'] = config.get('sparql', 'http://data.wu.ac.at/odgraphsearch/query/')
     app.config['MAX_CONTENT_LENGTH'] = maxFileSize
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
