@@ -21,9 +21,22 @@ PERIOD_QUERY = "PREFIX timex: <http://data.wu.ac.at/ns/timex#> \n" \
                "  ?value timex:hasStartTime ?start ; "+ \
                "       timex:hasEndTime ?end . }} "
 
+ALL_PERIODS_LIMIT = "PREFIX timex: <http://data.wu.ac.at/ns/timex#> \n" \
+               "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" \
+               "SELECT ?name ?value ?start ?end WHERE {{ " + \
+               "  ?value rdfs:label ?name. " + \
+               "  ?value timex:hasStartTime ?start ; " + \
+               "       timex:hasEndTime ?end . }} LIMIT {0} "
+
+START_END_QUERY = "PREFIX timex: <http://data.wu.ac.at/ns/timex#> \n" \
+                  "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \n" \
+                "SELECT ?start ?end WHERE {{ " +\
+                " <{0}> timex:hasStartTime ?start ; "+ \
+                "      timex:hasEndTime ?end . }} "
+
 
 @temporal_ns.route('/periods')
-@temporal_ns.doc(params={'q': 'filter'}, description="Returns all time periods")
+@temporal_ns.doc(params={'q': 'filter string'}, description="Returns all time periods")
 class GetPeriods(Resource):
     def __init__(self, *args, **kwargs):
         super(GetPeriods, self).__init__(*args, **kwargs)
@@ -33,16 +46,44 @@ class GetPeriods(Resource):
 
     def get(self):
         q = request.args.get("q")
+        limit = request.args.get("limit", 100)
         # only query for 3 or more letters
         data = {'success': False}
-        if len(q) >= 3:
+        result = None
+        if not q or len(q) == 0:
+            statement = ALL_PERIODS_LIMIT.format(limit)
+            result = self.s.query(statement)
+        else:
             statement = PERIOD_QUERY.format(q)
             result = self.s.query(statement)
-            if result:
-                data['results'] = []
-                for r in result.fetchone():
-                    data['success'] = True
-                    data['results'].append({'name': r[0].value, 'value': r[1].value, 'start': r[2].value, 'end': r[3].value})
+
+        if result:
+            data['success'] = True
+            data['results'] = []
+            for r in result.fetchone():
+                data['results'].append({'name': r[0].value, 'value': r[1].value, 'start': r[2].value, 'end': r[3].value})
+        return jsonify(data)
+
+
+@temporal_ns.route('/period')
+@temporal_ns.doc(params={'id': 'ID of the period'}, description="Returns start and end time ")
+class GetSinglePeriod(Resource):
+    def __init__(self, *args, **kwargs):
+        super(GetSinglePeriod, self).__init__(*args, **kwargs)
+        sparql_endpoint = current_app.config['SPARQL']
+        self.s = sparql.Service(sparql_endpoint, "utf-8", "GET")
+
+    def get(self):
+        pid = request.args.get("id")
+        # only query for 3 or more letters
+        data = {'success': False}
+        if pid:
+            statement = START_END_QUERY.format(pid)
+            result = self.s.query(statement)
+            data['success'] = True
+            for r in result.fetchone():
+                data['result'] = {'value': pid, 'start': r[0].value, 'end': r[1].value}
+                break
         return jsonify(data)
 
 
