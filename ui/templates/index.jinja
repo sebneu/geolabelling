@@ -429,8 +429,8 @@
     $("#slider").dateRangeSlider(
       {
         bounds: {
-          min: new Date(2000, 0, 1),
-          max: new Date(2025, 11, 31)
+          min: new Date(1900, 0, 1),
+          max: new Date(2050, 11, 31)
         },
         defaultValues: {
           min: startD,
@@ -490,8 +490,16 @@
           // this url returns a list of periods
           url: 'api/v1/temporal/periods?q={query}'
         },
-        filterRemoteData: true
-      })
-    ;
+        onChange: function(value, text, $selectedItem) {
+          $.get( "api/v1/temporal/period?id="+value, function( data ) {
+             if(data['success']) {
+                dates = data['result']
+                 startD = new Date(dates['start']);
+                 endD = new Date(dates['end']);
+                 $("#slider").dateRangeSlider("values", startD, endD);
+             }
+          });
+        }
+    });
 
 {% endblock %}
