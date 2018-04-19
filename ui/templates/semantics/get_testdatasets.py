@@ -19,7 +19,7 @@ def from_json(file):
             <div class="item">
               <div class="ui grid">
                 <div class="twelve wide column">
-                  <a class="header" href="eswc/{0}">{1}</a>
+                  <a class="header" href="semantics/{0}">{1}</a>
                   <div class="description">{0}</div>
                 </div>
                 <div class="right aligned four wide column">
@@ -38,13 +38,13 @@ def from_csvfiles():
         with open('tmp.txt', 'w') as f:
             print '<h3>' + arrFilename[1][:-4] + '</h3>'
             bashCommand = "sort -R " + os.path.join(dir,filename)
-            print subprocess.call(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/eswc', stdout=f)
+            print subprocess.call(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/semantics', stdout=f)
         with open('tmp2.txt', 'w') as f:
             bashCommand = "head -n 5 tmp.txt"
-            print subprocess.call(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/eswc', stdout=f)
+            print subprocess.call(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/semantics', stdout=f)
 
         #print bashCommand
-        #print subprocess.Popen(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/eswc', shell=True)
+        #print subprocess.Popen(bashCommand.split(), cwd='/home/neumaier/Repos/odgraph/ui/templates/semantics', shell=True)
         #ps = subprocess.Popen(bashCommand.split(), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         #output = ps.communicate()[0]
         #print output
@@ -58,7 +58,7 @@ def from_csvfiles():
                 print '  <div class="item">'
                 print '  <i class="large file middle aligned icon"></i>'
                 print '    <div class="content">'
-                print '      <a class="header" href="eswc/' + url + '">' + title + '</a>'
+                print '      <a class="header" href="semantics/' + url + '">' + title + '</a>'
                 print '     <div class="description">' + url + '</div>'
                 print '     </div>'
                 print '   </div>'

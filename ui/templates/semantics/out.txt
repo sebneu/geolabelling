@@ -1,0 +1,131 @@
+
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/https://www.dpma.de/docs/dpma/veroeffentlichungen/statistik/markenanmeldungeninlanddpmanachbundeslaendern.csv">Markenanmeldungen nach Bundesländern</a>
+                  <div class="description">https://www.dpma.de/docs/dpma/veroeffentlichungen/statistik/markenanmeldungeninlanddpmanachbundeslaendern.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Deutsches Patent- und Markenamt</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/937836e0-f4de-4825-b2f8-5c3f8640a0b2">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/https://www.regionalstatistik.de/genesisws/downloader/00/11111-01-01-4_00.csv">Gebietsstand: Gebietsfläche in qkm - Stichtag 31.12. - regionale Tiefe: Kreise und krfr. Städte</a>
+                  <div class="description">https://www.regionalstatistik.de/genesisws/downloader/00/11111-01-01-4_00.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Regionalstatistik</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/521c901b-8370-58a0-aad9-99da0744afff">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/http://www.bundesversicherungsamt.de/fileadmin/redaktion/Gesundheitsfonds/Ein-_und_Auszahlungen_des_Gesundheitsfonds.csv">Ein- und Auszahlungen des Gesundheitsfonds 2014</a>
+                  <div class="description">http://www.bundesversicherungsamt.de/fileadmin/redaktion/Gesundheitsfonds/Ein-_und_Auszahlungen_des_Gesundheitsfonds.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Bundesministerium des Innern</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/db17de03-588a-4a96-ac4e-fc93a292613a">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/https://www.regionalstatistik.de/genesisws/downloader/00/AI-S-03_00.csv">Regionalatlas Deutschland Indikatoren des Indikatorensystems 'Soziales' Themenbereich 'Mindestsicherungsleistungen'</a>
+                  <div class="description">https://www.regionalstatistik.de/genesisws/downloader/00/AI-S-03_00.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Regionalstatistik</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/668cb3a1-800e-591b-8727-22db62c25e8c">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/https://www.regionalstatistik.de/genesisws/downloader/00/12111-08-01-4_00.csv">Zensus 2011, Bevölkerung nach Geschlecht/Nationalität und Migrationshintergrund (Aufenthaltsdauer) - 09.05.2011 - regionale Tiefe: Kreise und krfr. Städte</a>
+                  <div class="description">https://www.regionalstatistik.de/genesisws/downloader/00/12111-08-01-4_00.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Regionalstatistik</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/a9656f47-aa8a-5520-901a-0f4b772d3517">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/https://www.regionalstatistik.de/genesisws/downloader/00/12411-07-01-4_00.csv">Durchschnittsalter der Bevölkerung - Stichtag 31.12. - regionale Tiefe: Kreise und krfr. Städte</a>
+                  <div class="description">https://www.regionalstatistik.de/genesisws/downloader/00/12411-07-01-4_00.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Regionalstatistik</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/0468ff5c-7aab-5a81-82cc-c4a5b75e9d9b">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/http://www.datenportal.bmbf.de/portal/Tabelle-2.5.59.csv">Weibliches hauptberufliches wissenschaftliches und künstlerisches Personal nach Hochschularten und Personal-/Vergütungsgruppen</a>
+                  <div class="description">http://www.datenportal.bmbf.de/portal/Tabelle-2.5.59.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Bundesministerium für Bildung und Forschung</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/726810e2-cb7f-5e82-962e-dab93dad096b">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/http://www.datenportal.bmbf.de/portal/Tabelle-1.1.7.csv">Ausgaben des Bundes für Wissenschaft, Forschung und Entwicklung nach Förderarten</a>
+                  <div class="description">http://www.datenportal.bmbf.de/portal/Tabelle-1.1.7.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Bundesministerium für Bildung und Forschung</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/cf14c7c1-55b3-5405-a1ea-fce14fb390b4">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/http://www.datenportal.bmbf.de/portal/Tabelle-0.57.csv">Bevölkerung mit einem Bildungsabschluss im Tertiärbereich nach ISCED-Stufen, Altersgruppen und Staaten</a>
+                  <div class="description">http://www.datenportal.bmbf.de/portal/Tabelle-0.57.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Bundesministerium für Bildung und Forschung</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/3424b955-aa69-5ff2-b6ef-312262941b49">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="item">
+              <div class="ui grid">
+                <div class="twelve wide column">
+                  <a class="header" href="semantics/http://www.datenportal.bmbf.de/portal/Tabelle-2.5.80.csv">Studiendauer bei bestandener Prüfung nach Prüfungsgruppen und Geschlecht</a>
+                  <div class="description">http://www.datenportal.bmbf.de/portal/Tabelle-2.5.80.csv</div>
+                </div>
+                <div class="right aligned four wide column">
+                  <div class="header">Bundesministerium für Bildung und Forschung</div>
+                  <div class="description"><a href="https://www.govdata.de/ckan/dataset/3534ebb9-ed42-5a62-a880-c3d85d979071">http://govdata.de</a></div>
+                </div>
+              </div>
+            </div>
+            
