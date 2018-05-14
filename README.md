@@ -4,6 +4,14 @@ Geo-semantic labelling of Open Data
 
 ## Setup
 
+* `$ git clone git@github.com:sebneu/geolabelling.git`
+* `$ cd geolabelling`
+* (optionally) setup virtual environment
+* `$ virtualenv --system-site-packages geolabelling_env`
+* `$ . geolabelling_env/bin/activate`
+* Install requirements 
+* `$ python setup.py install`
+
 ### GeoNames RDF dump
 Download the [GeoNames RDF dump](http://download.geonames.org/all-geonames-rdf.zip) and extract it to the "local" folder.
 
