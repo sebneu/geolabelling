@@ -54,7 +54,7 @@ def decode_utf8(string):
 def index():
     locationsearch = current_app.config['LOCATION_SEARCH']
     search_api = url_for('.search')
-    data = {'randomEntities': []}
+    data = {'randomEntities': [], "twentythree": current_app.config.get("23TOKEN")}
     e = locationsearch.get('http://sws.geonames.org/2643741/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
@@ -295,6 +295,7 @@ def search():
 
     data['currentPage'] = page
     data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, data['total'], limit))]
+    data["twentythree"] = current_app.config.get("23TOKEN")
     return render('index.jinja', data)
 
 @ui.route('/kgsearch', methods=['GET', 'POST'])

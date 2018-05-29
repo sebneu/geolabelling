@@ -190,16 +190,16 @@
                             <div class="one wide column">
                               <div class="ui list">
                                   <div class="item">
-                                    <button class="primary circular ui icon button preview">
+                                    <button class="primary circular ui icon button preview" data-tooltip="Table Preview" data-variation="small">
                                         <i class="table icon"></i>
                                     </button>
                                   </div>
-                                  <!--<div class="item">
-                                    <button class="primary circular ui icon button profile" >
-                                        <i class="bar chart icon"></i>
+                                  <div class="item">
+                                    <button class="circular ui icon button visual" style="display:none;" data-tooltip="Table Visualization" data-variation="small">
+                                        <i class="map icon"></i>
                                     </button>
                                   </div>
-                                  <div class="item">
+                                  <!--<div class="item">
                                     <button class="primary circular ui icon button" >
                                         <i class="info icon"></i>
                                     </button>
@@ -320,6 +320,34 @@
   </div>
 </div>
 </div>
+
+<div class="ui large modal" id="visual_modal">
+  <i class="close icon"></i>
+  <div class="content" id="table_visual" style="height:640px;"></div>
+      <div class="actions">
+         <div class="ui internally celled grid">
+            <div class="two wide column">
+                <div class="ui header" id="num_visuals"></div>
+            </div>
+            <div class="ten wide column">
+                <div class="ui description" id="slug_visuals"></div>
+            </div>
+            <div class="four wide column">
+                <div class="ui buttons">
+                    <button class="ui left attached icon button">
+                      <i class="left chevron icon"></i>
+                      Previous
+                    </button>
+                    <button class="ui right attached icon button">
+                      <i class="right chevron icon"></i>
+                      Next
+                    </button>
+                </div>
+            </div>
+         </div>
+      </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block script %}
@@ -333,7 +361,7 @@
       })
     ;
 
-    $("#results").on('click', '.preview, .button', function() {
+    $("#results").on('click', '.preview', function() {
         url = $(this).closest('.ui .grid');
         var urlval = url.find('div.header').children().attr('href');
         $(table_header).text('Loading...')
@@ -344,6 +372,57 @@
         ;
     });
 
+    $("#results").on('click', '.visual', function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data( this, "twentythree" );
+        jQuery.data(modal, "twentythree", response);
+        jQuery.data(modal, "currentindex", 0);
+        loadTableVisual(response, 0);
+        $('#visual_modal')
+          .modal('show')
+        ;
+    });
+
+    function loadTableVisual(response, index) {
+        i = index+1
+        slug = response.vizzes[index].slug
+        $(num_visuals).text(i + '/' + response.found)
+        $(slug_visuals).text(slug)
+        $(table_visual).html('<iframe src="https://doh.23degrees.io/embed/'+slug+'" style="padding:5px 0!important; width:100%!important; height:100%!important; min-height:360px!important; max-height:620px!important" frameborder="0" scrolling="no" id="twentythree"></iframe>')
+    }
+
+    function visualAvailable(button) {
+        var twentythreeurl = "https://doh.23degrees.io/services/pub/api/v1/opendata/bysourceurl";
+        url = $(button).closest('.ui .grid');
+        var urlval = url.find('div.header').children().attr('href');
+        // Send the data using post
+        var posting = $.ajax
+        ({
+            crossDomain: true,
+            type: "POST",
+            url: twentythreeurl,
+            dataType: 'json',
+            async: false,
+            headers: {
+                "Content-Type" : "application/json",
+                "Authorization": "Bearer {{data.twentythree}}",
+                "Cache-Control": "no-cache"
+            },
+            data: '{ "sourceUrl" : "'+urlval+'" }',
+            success: function (response){
+                if(response.found > 0) {
+                    button.style.display = "block";
+                    jQuery.data(button, "twentythree", response);
+                } else {
+                    button.style.display = "hide";
+                }
+            }
+        });
+    }
+    $( ".visual" ).each(function( index ) {
+        visualAvailable(this);
+    });
+
     $(".button.fulltext").click(function() {
         var input = event.target.id;
         a = "{{ url_for('ui.search')}}"
@@ -351,6 +430,28 @@
            a+="?q="+input
            window.location.href=a
         }
+    });
+
+    $(".button.left").click(function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data(modal, "twentythree" );
+        index = jQuery.data(modal, "currentindex" );
+        if(index==0){
+            index=response.found-1;
+        } else {
+            index--;
+        }
+        jQuery.data(modal, "currentindex", index);
+        loadTableVisual(response, index);
+    });
+
+    $(".button.right").click(function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data(modal, "twentythree" );
+        index = jQuery.data(modal, "currentindex" );
+        index = (index+1)%response.found;
+        jQuery.data(modal, "currentindex", index);
+        loadTableVisual(response, index);
     });
 
     $("#pagination").on('click', '.pagination, .item', function(){
@@ -367,7 +468,6 @@
                 }
             });
     });
-
 
 
     $("#keyword").keyup(function(event){

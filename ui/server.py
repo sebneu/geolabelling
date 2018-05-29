@@ -113,6 +113,7 @@ def start():
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
     app.config['ELASTICSEARCH'] = search_apis.ESClient(conf=config)
+    app.config['23TOKEN'] = config['twentythree']
 
     blueprint = Blueprint('api', __name__, url_prefix='/' + url_prefix + '/api/v1')
     api.init_app(blueprint)
