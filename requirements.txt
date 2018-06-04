@@ -1,4 +1,5 @@
-https://github.com/sebneu/anycsv/tarball/master#egg=anycsv
+-e git+https://github.com/sebneu/anycsv.git#egg=anycsv
+-e git+https://github.com/ODInfoBiz/pyyacp.git@v1.1#egg=pyyacp
 cchardet
 flask
 rdflib

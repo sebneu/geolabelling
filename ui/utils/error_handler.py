@@ -1,8 +1,3 @@
-'''
-Created on Dec 14, 2015
-
-@author: jumbrich
-'''
 from _collections import defaultdict
 import traceback
 class ErrorHandler():

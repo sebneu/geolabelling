@@ -1,15 +1,20 @@
-data:
-    submit: 'data/submit/'
-
 db:
+    host: localhost
+    port: 27017
+
+es:
+    mapping: v1
+    indexName: eucsv
+    host: localhost
+    port: 9200
+
+mongodb:
     host: localhost
     port: 27018
 
-es:
-    indexName: eucsv
-    host: localhost
-    port: 9201
+odpw:
+    apiurl: http://data.wu.ac.at/portalwatch/api/v1/
 
-ui:
-    maxFileSize: 1048576
-    port: 2340
+heideltime: heideltime-standalone
+
+twentythree: null
