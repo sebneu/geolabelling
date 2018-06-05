@@ -138,7 +138,7 @@ class LocationSearch:
                                 tmp['description'] = region['name']
                         results.append(tmp)
             except Exception as e:
-                logging.error(e)
+                logging.error(str(e))
         return results
 
     def get_nuts(self, q, search_api, limit=5):
@@ -212,7 +212,7 @@ class ESClient(object):
             self.es.indices.delete(index=self.indexName, ignore=[400, 404])
         res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping']})
 
-        logging.info("ESClient, created index", response=str(res))
+        logging.info("ESClient, created index " + str(res))
 
 
     def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging):
@@ -229,7 +229,7 @@ class ESClient(object):
             table=tables[0]
 
         except Exception as e:
-            logging.error("Error",errorclass= str(e.__class__) ,errormessage= str(e.message) if e.message else "")
+            logging.error("Error " + str(e))
             error={"errorclass": str(e.__class__),
                    "errormessage": str(e.message) if e.message else ""}
 

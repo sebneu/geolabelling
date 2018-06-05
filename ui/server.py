@@ -67,7 +67,7 @@ def cli(args, es):
         config = utils.load_config(args.config)
     except Exception as e:
         ErrorHandler.DEBUG=True
-        logging.exception("Exception during config initialisation", exception=e)
+        logging.exception("Exception during config initialisation: " + str(e))
         return
 
     app = Flask(__name__)
