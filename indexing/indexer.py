@@ -111,7 +111,7 @@ def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_
                             yield url, content, datasetinfo[url]
                         except Exception as e:
                             logging.error('Error while downloading dataset: ' + url)
-                            logging.error(e)
+                            logging.error(str(e))
 
             except Exception as e:
                 logging.error('Error while retrieving all datasets: ' + d_id)
@@ -128,16 +128,16 @@ def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, 
     portal=portalInfo['id']
 
     for url, content, dsfields in getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size):
-        logging.info("Dataset from ODPW", portal=portal, snapshot=snapshot, url=url)
+        logging.info("Dataset from ODPW: " + portal + ", snapshot: " + str(snapshot) + ", URL: " + url)
 
         try:
             if not repair or (repair and not es.exists(url)):
                 resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging)
-                logging.info("ES INDEXED", url=url, status=resp['result'])
+                logging.info("ES INDEXED, URL: " + url + ", status: " + resp['result'])
                 status['ok']+=1
         except Exception as e:
             traceback.print_stack()
-            logging.error("ES INDEX", url=url, portal=portal, error=e, exc_info=True)
+            logging.error("ES INDEX " + portal + ", URL: " + url + ", Error:" + str(e))
             status['error'] += 1
             status[str(e.__class__)] += 1
     return status
@@ -154,10 +154,10 @@ def bulkIndex(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, langua
             errors = ''
             if res and 'errors' in res:
                 errors = res['errors']
-                logging.info("Bulk-index", portal=portal, snapshot=snapshot, tables=len(tables_bulk), es_errors=str(errors))
+                logging.info("Bulk-index: " + portal + ", snapshot: " + str(snapshot) + ", tables: " + str(len(tables_bulk)) + ", es_errors: " + str(errors))
             tables_bulk = []
 
-            logging.info("Dataset from ODPW", portal=portal, snapshot=snapshot, url=url)
+            logging.info("Dataset from ODPW: " + portal + ", snapshot: " + str(snapshot) + ", URL: " + url)
         tables_bulk.append((url, content, dsfields))
 
 
@@ -193,14 +193,14 @@ def cli(args, es):
             if 'odpw' in config:
                 odpwAPI=config['odpw']['apiurl']
             else:
-                logging.info("ODPW ERROR", msg="Please specify the (ADEQUATe) Portal Watch API in the config file")
+                logging.info("ODPW ERROR: Please specify the (ADEQUATe) Portal Watch API in the config file")
                 return -1
             heideltime_path = config.get('heideltime')
 
     logging.info("Getting portal Info")
     res = requests.get(odpwAPI+"portals/list")
     if res.status_code!=200:
-        logging.info("ODPW ERROR", msg="Could not get portal list", status=res.status_code)
+        logging.info("ODPW ERROR: Could not get portal list")
     else:
         portalInfo = { p['id']:p for p in res.json()}
 
@@ -221,12 +221,12 @@ def cli(args, es):
         for url in args.url:
             # just index single URLs
             resp= es.indexTable(url=url, portalInfo=portalInfo[args.portal[0]], geotagging=geotagging)
-            logging.info("ES INDEXED", url=url, status=resp['result'])
+            logging.info("ES INDEXED: " + url + ", STATUS: " + resp['result'])
     else:
         for portal in portalIDs:
             status = {}
             if portal not in portalInfo:
-                logging.error("Portal not known", portal=portal)
+                logging.error("Portal not known: " + portal)
                 exit()
 
             p = portalInfo[portal]
@@ -239,18 +239,10 @@ def cli(args, es):
                 except:
                     lang = 'english'
             lang = lang.upper()
-            logging.info("Starting indexing", portal=portal, snapshot=snapshot, format=args.format)
+            logging.info("Starting indexing: " + portal + ", snapshot: " + str(snapshot) + ", format: " +args.format)
             if args.bulk:
                 bulkIndex(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang,
                                geotagging=geotagging, max_file_size=args.max_size)
 
             else:
                 status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size)
-            logging.info("INDEXER STATUS", portal=portal, snapshot=snapshot, format=args.format, **status)
-
-        logging.info("Updating urls with two portal information")
-        for k,v in urlPortalID.items():
-            if len(v)>1:# URL appears in more than one
-                for pv in v[1:]:
-                    logging.info("updating table portal info", url=k, updatePortal=pv)
-                    es.updatePortalInfo(k,pv)
