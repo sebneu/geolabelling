@@ -4,5 +4,6 @@ es:
    - "9200:9200"
   environment:
    - "ES_JAVA_OPTS=-Xms10g -Xmx10g"
+   - xpack.security.enabled=false
   volumes:
    - /home/csv/es-index/esdata:/usr/share/elasticsearch/data
