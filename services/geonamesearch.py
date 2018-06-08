@@ -16,7 +16,7 @@ def generate_id(db, gn_id):
 
 
 def index_all_geonames(es, es_names, indexName, db):
-    for gn in db.geonames.find({'_id': 'http://sws.geonames.org/2761367/'}):
+    for gn in db.geonames.find():
         gn_id = gn['_id']
         name = gn.get('name')
         parent_id = gn.get('parent')
