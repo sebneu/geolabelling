@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from flask import render_template, Flask, Blueprint, jsonify, request, url_for
 import logging
-
-import geo_tagger
-from ui import search_apis
-from ui.utils import utils
-from utils.error_handler import ErrorHandler as eh, ErrorHandler
-
 from tornado.wsgi import WSGIContainer
+
+from flask import Flask, Blueprint
+
+from services import geo_tagger
+from ui import search_apis
+from ui.export_namespace import get_ns
+from ui.export_namespace import rdf_ns
 from ui.rest_api import api
 from ui.ui_blueprint import ui
-from ui.export_namespace import rdf_ns
-from ui.export_namespace import get_ns
-
-
+from ui.utils import utils
+from utils.error_handler import ErrorHandler
 
 
 class ReverseProxied(object):

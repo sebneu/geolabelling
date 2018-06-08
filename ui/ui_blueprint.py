@@ -3,8 +3,9 @@ from urlparse import urlparse
 
 import jinja2
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, jsonify
-from geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
+
 from openstreetmap.osm_inserter import get_geonames_url
+from services.geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
 from ui import search_apis
 from ui.utils import mongo_collections_utils
 

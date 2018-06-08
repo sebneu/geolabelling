@@ -1,17 +1,14 @@
 # coding=utf-8
 import unittest
-import logging
-import sys
-from postal.parser import parse_address
-from postal.expand import expand_address
-from pymongo import MongoClient
 
+from postal.parser import parse_address
+from pymongo import MongoClient
 from pyyacp.datatable import parseDataTables
 from pyyacp.yacp import YACParser
 
-from geo_tagger import GeoTagger
 from openstreetmap.osm_inserter import get_geonames_id
-from osm_tagger import OSMTagger
+from services.geo_tagger import GeoTagger
+from services.osm_tagger import OSMTagger
 
 
 class OSMAddressTextCase(unittest.TestCase):

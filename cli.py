@@ -14,9 +14,11 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 from indexing import indexer
 from ui import server as ui
+from services import geonamesearch
 
 submodules=[
     indexer,
+    geonamesearch,
     ui
   ]
 
@@ -65,21 +67,21 @@ def start(argv):
         config = utils.load_config(args.config)
     except Exception as e:
         ErrorHandler.DEBUG = True
-        logging.exception("Exception during config initialisation", exception=e)
+        logging.exception("Exception during config initialisation: " + str(e))
         return
 
     es = search_apis.ESClient(conf=config)
 
     try:
-        logging.info("CMD ARGS", args=str(args))
+        logging.info("CMD ARGS: " + str(args))
         args.func(args , es)
     except Exception as e:
-        logging.error("Uncaught exception", exc_info=True)
+        logging.error("Uncaught exception: " + str(e))
 
     end = time.time()
     secs = end - start
     msecs = secs * 1000
-    logging.info("END MAIN", time_elapsed=msecs)
+    logging.info("END MAIN time_elapsed: " + str(msecs))
 
     
 

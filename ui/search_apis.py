@@ -191,7 +191,7 @@ class LocationSearch:
 
 
 class ESClient(object):
-    def __init__(self, indexName='autcsv', mappingName='v1', conf=None):
+    def __init__(self, conf=None, indexName='autcsv', mappingName='v1', host='localhost', port=27017):
         if conf:
             host = {'host': conf['es']['host'], 'port': conf['es']['port']}
             if 'url_prefix' in conf['es']:
@@ -201,7 +201,7 @@ class ESClient(object):
             self.indexName = conf['es']['indexName']
             self.mappingName=conf['es']['mapping']
         else:
-            self.es = Elasticsearch()
+            self.es = Elasticsearch(hosts=[{'host': host, 'port': port}])
             self.indexName = indexName
             self.mappingName=mappingName
         self.mappingConfig = mappings[self.mappingName]
@@ -553,14 +553,12 @@ class ESClient(object):
             })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
+    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None, count=False):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
-                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     tmp: [
@@ -584,6 +582,11 @@ class ESClient(object):
                 }
             }
         }
+        if not count:
+            q["_source"] = ["url", "column.header.value", "portal.*", "dataset.*",
+                            'metadata_entities', 'data_entities', "metadata_temp_start",
+                            "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
+
         if temporal_constraints:
             if tmp == 'must':
                 q['query']['bool']['must'] += temporal_constraints
@@ -599,7 +602,10 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+        if count:
+            return self.es.count(index=self.indexName, doc_type='table', body=q)
+        else:
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {

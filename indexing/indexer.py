@@ -1,17 +1,16 @@
-
-import traceback
-import logging
 import datetime
+import logging
+import sys
+import traceback
+import urllib2
+from collections import defaultdict
+
+import pycountry
 import requests
 import yaml
-from collections import defaultdict
-import urllib2
-import sys
-import pycountry
 
 from indexing import language_mapping
-
-import time_tagger
+from services import time_tagger
 
 
 def getURLperPortal(odpwAPI,portal, snapshot, format):
@@ -206,7 +205,7 @@ def cli(args, es):
 
     geotagging = False
     if args.geotagging:
-        import geo_tagger
+        from services import geo_tagger
         mongodb_host = config['mongodb']['host']
         mongodb_port = config['mongodb']['port']
         geotagging = geo_tagger.GeoTagger(host=mongodb_host, port=mongodb_port)
