@@ -8,10 +8,6 @@ es:
     host: localhost
     port: 9200
 
-mongodb:
-    host: localhost
-    port: 27018
-
 odpw:
     apiurl: http://data.wu.ac.at/portalwatch/api/v1/
 

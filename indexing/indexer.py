@@ -206,8 +206,8 @@ def cli(args, es):
     geotagging = False
     if args.geotagging:
         from services import geo_tagger
-        mongodb_host = config['mongodb']['host']
-        mongodb_port = config['mongodb']['port']
+        mongodb_host = config['db']['host']
+        mongodb_port = config['db']['port']
         geotagging = geo_tagger.GeoTagger(host=mongodb_host, port=mongodb_port)
 
     if args.disable_heideltime:
