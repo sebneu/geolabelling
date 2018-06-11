@@ -146,7 +146,7 @@ def postalcode_csv_to_mongo(client, args):
         keywordentry = keywords.find_one({'_id': localname})
         if keywordentry and 'geonames' in keywordentry:
             for geo_id in keywordentry['geonames']:
-                parent_ids = get_all_parent_ids(client, geo_id)
+                parent_ids = get_all_parent_ids(client.geostore, geo_id)
                 if country_id in parent_ids:
                     parent_names = get_all_parents(client, geo_id)
                     if town in parent_names and (district in parent_names or state in parent_names):
@@ -328,7 +328,7 @@ def get_lowest_common_ancestor(client, geonames_ids):
     parents = {}
 
     for geo_id in geonames_ids:
-        parents[geo_id] = get_all_parent_ids(client, geo_id)
+        parents[geo_id] = get_all_parent_ids(client.geostore, geo_id)
     if len(geonames_ids) > 0:
         for p in parents[geonames_ids[0]]:
             common_anc = True
@@ -366,8 +366,7 @@ def _get_all_parent_ids(geo_id, geonames_collection, all_ids):
             _get_all_parent_ids(current["parent"], geonames_collection, all_ids)
 
 
-def get_all_parent_ids(client, geo_id):
-    db = client.geostore
+def get_all_parent_ids(db, geo_id):
     geonames_collection = db.geonames
     all_ids = []
     _get_all_parent_ids(geo_id, geonames_collection, all_ids)

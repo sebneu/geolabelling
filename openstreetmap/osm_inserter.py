@@ -267,7 +267,7 @@ def in_geonames_parents(geo_id, ids):
     # check if geonames_id is more specific or general
     all_parents = []
     for x in ids:
-        all_parents += get_all_parent_ids(client, geonamesId_to_url(x))
+        all_parents += get_all_parent_ids(client.geostore, geonamesId_to_url(x))
     return geonamesId_to_url(geo_id) in all_parents
 
 

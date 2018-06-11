@@ -3,8 +3,9 @@ from urlparse import urlparse
 
 import jinja2
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, jsonify
-from geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
+
 from openstreetmap.osm_inserter import get_geonames_url
+from services.geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
 from ui import search_apis
 from ui.utils import mongo_collections_utils
 
@@ -140,8 +141,11 @@ def search_kg(limit=10):
         return resp
 
     locationsearch = current_app.config['LOCATION_SEARCH']
+    es_search = current_app.config['ELASTICSEARCH']
     search_api = url_for('.search')
-    results = locationsearch.get_by_substring(q, search_api, limit=limit)
+
+    geonames_res = es_search.searchGeoNames(q, limit=limit)
+    results = search_apis.formatGeoNamesResults(geonames_res, search_api)
     resp = {
       "results": {
         "locations": {

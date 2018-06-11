@@ -2,13 +2,15 @@ import json
 import logging
 from collections import defaultdict
 
-import yaml
-import pymongo
+import datetime
+from pyyacp.yacp import YACParser
+from pyyacp.datatable import parseDataTables
 from pymongo import MongoClient
 import urllib
 import random
 from elasticsearch import Elasticsearch
 
+from indexing.mapping import mappings
 from openstreetmap.osm_inserter import get_geonames_url
 from ui.utils import mongo_collections_utils
 from ui.utils import export_rdf
@@ -136,7 +138,7 @@ class LocationSearch:
                                 tmp['description'] = region['name']
                         results.append(tmp)
             except Exception as e:
-                logging.error(e)
+                logging.error(str(e))
         return results
 
     def get_nuts(self, q, search_api, limit=5):
@@ -189,7 +191,7 @@ class LocationSearch:
 
 
 class ESClient(object):
-    def __init__(self, indexName='autcsv', conf=None):
+    def __init__(self, conf=None, indexName='autcsv', mappingName='v1', host='localhost', port=27017):
         if conf:
             host = {'host': conf['es']['host'], 'port': conf['es']['port']}
             if 'url_prefix' in conf['es']:
@@ -197,9 +199,75 @@ class ESClient(object):
 
             self.es = Elasticsearch(hosts=[host], timeout=30, max_retries=10, retry_on_timeout=True)
             self.indexName = conf['es']['indexName']
+            self.mappingName=conf['es']['mapping']
         else:
-            self.es = Elasticsearch()
+            self.es = Elasticsearch(hosts=[{'host': host, 'port': port}])
             self.indexName = indexName
+            self.mappingName=mappingName
+        self.mappingConfig = mappings[self.mappingName]
+
+    def setup(self, delete=True):
+        if delete:
+            logging.info("ESClient, delete index")
+            self.es.indices.delete(index=self.indexName, ignore=[400, 404])
+        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping']})
+
+        logging.info("ESClient, created index " + str(res))
+
+
+    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging):
+        """ This reindexes the table with id URL"""
+        download_url = None
+        if not content:
+            download_url = url
+        table, error=None, None
+        try:
+            yacp = YACParser(content=content, url=download_url, filename=fileName, sample_size=1800)
+            tables = parseDataTables(yacp, url=url)
+            if len(tables)>1:
+                raise ValueError("Currently we support only indexing of single tables per URL (input {})".format(url))
+            table=tables[0]
+
+        except Exception as e:
+            logging.error("Error " + str(e))
+            error={"errorclass": str(e.__class__),
+                   "errormessage": str(e.message) if e.message else ""}
+
+        dt = self.mappingConfig['generator'](url=url, inputTable=table, error=error, portalInfo=portalInfo)
+
+        # add dataset title description etc
+        meta_loc_ann = []
+        if datasetInfo:
+            # use metadata for annotation
+            if geotagging:
+                meta_loc_ann = geotagging.from_metadatada(datasetInfo['dataset'], fields=['dataset_name', 'publisher'], orig_country_code=portalInfo['iso'])
+                if meta_loc_ann:
+                    dt['metadata_entities'] = meta_loc_ann
+            for f in datasetInfo:
+                dt[f] = datasetInfo[f]
+
+        loc_annotation = False
+        if geotagging and 'row' in dt:
+            regions = set()
+            for l in meta_loc_ann:
+                regions |= geotagging.get_all_subregions(l, portalInfo['iso'])
+            loc_annotation = geotagging.from_dt(dt, orig_country_code=portalInfo['iso'], regions=regions)
+
+        dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
+        return dt
+
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None):
+        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging)
+        return self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)
+
+    def bulkIndexTables(self, tables_bulk, portalInfo, geotagging):
+        body = u''
+        for url, content, dsFields in tables_bulk:
+            body += u'{"index":{"_type":"table", "_id": "' + url + u'"}} \n'
+            dt = self.get_index_body(url=url, content=content, fileName=None, portalInfo=portalInfo, datasetInfo=dsFields, geotagging=geotagging)
+            body += json.dumps(dt) + u' \n'
+        return self.es.bulk(index=self.indexName, doc_type="table", body=body)
+
 
     def get(self, url, columns=True, rows=True):
         include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
@@ -485,14 +553,12 @@ class ESClient(object):
             })
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
+    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None, count=False):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
-                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     tmp: [
@@ -516,6 +582,11 @@ class ESClient(object):
                 }
             }
         }
+        if not count:
+            q["_source"] = ["url", "column.header.value", "portal.*", "dataset.*",
+                            'metadata_entities', 'data_entities', "metadata_temp_start",
+                            "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
+
         if temporal_constraints:
             if tmp == 'must':
                 q['query']['bool']['must'] += temporal_constraints
@@ -531,7 +602,10 @@ class ESClient(object):
                     }
                 }
             })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+        if count:
+            return self.es.count(index=self.indexName, doc_type='table', body=q)
+        else:
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
@@ -642,6 +716,43 @@ class ESClient(object):
                 }
             })
         return q
+
+
+    def searchGeoNames(self, text, limit=10, offset=0):
+        q = {
+            "query": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["name", "alternateName"],
+                    "type": "phrase_prefix",
+                    "max_expansions" : 10
+                }
+            },
+            "sort": [
+                {"datasets": {"order": "desc"}}
+            ]
+        }
+        return self.es.search(index='geonames', doc_type='geonames', body=q, size=limit, from_=offset)
+
+
+def formatGeoNamesResults(results, search_api):
+    res = []
+    for doc in results['hits']['hits']:
+        gn = doc['_source']
+        tmp = {
+            'title': gn['name'],
+            'url': search_api + '?' + urllib.urlencode({'l': gn['url']}),
+        }
+        #altNames = ', '.join(gn.get('alternateName', [])[:5])
+        #tmp['description'] = altNames
+        tmp['price'] = gn.get('datasets', '')
+        if 'countryName' in gn:
+            tmp['description'] = gn['countryName']
+
+        if 'parentFeatureName' in gn:
+            tmp['title'] += ' (' + gn['parentFeatureName'] + ')'
+        res.append(tmp)
+    return res
 
 
 MAX_STRING_LENGTH = 20

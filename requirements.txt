@@ -1,9 +1,18 @@
-https://github.com/sebneu/anycsv/tarball/master#egg=anycsv
+-e git+https://github.com/sebneu/anycsv.git#egg=anycsv
+-e git+https://github.com/ODInfoBiz/pyyacp.git@v1.1#egg=pyyacp
 cchardet
 flask
+flask_restplus
 rdflib
 sparql-client
+sparqlwrapper
 pymongo
+elasticsearch
 pycountry
 postal==1.0
 nltk
+rfc3987
+pyyaml
+lxml
+langdetect
+tornado
