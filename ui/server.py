@@ -62,7 +62,7 @@ def setupCLI(pa):
 
 def cli(args, es):
     try:
-        config = utils.load_config(args.conf)
+        config = utils.load_config(args.config)
     except Exception as e:
         ErrorHandler.DEBUG=True
         logging.exception("Exception during config initialisation: " + str(e))

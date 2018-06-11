@@ -42,7 +42,7 @@ def start():
     )
 
     config=pa.add_argument_group("Config")
-    config.add_argument('-c','--conf', help="config file")
+    config.add_argument('-c','--config', help="config file")
     
     sp = pa.add_subparsers(title='Modules', description="Available sub modules")
     for sm in submodules:
@@ -63,7 +63,7 @@ def start():
     logging.basicConfig(level=args.loglevel)
 
     try:
-        c = utils.load_config(args.conf)
+        c = utils.load_config(args.config)
     except Exception as e:
         ErrorHandler.DEBUG = True
         logging.exception("Exception during config initialisation: " + str(e))
