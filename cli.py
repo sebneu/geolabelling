@@ -14,15 +14,16 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 from indexing import indexer
 from ui import server as ui
+from services import geonamesearch
 
 submodules=[
     indexer,
+    geonamesearch,
     ui
   ]
 
 
-def start(argv):
-    print argv
+def start():
     start= time.time()
     pa = argparse.ArgumentParser(description='Open Data search and labelling toolset.', prog='odgraph')
 
@@ -41,7 +42,7 @@ def start(argv):
     )
 
     config=pa.add_argument_group("Config")
-    config.add_argument('-c','--config', help="config file", dest='config')
+    config.add_argument('-c','--config', help="config file")
     
     sp = pa.add_subparsers(title='Modules', description="Available sub modules")
     for sm in submodules:
@@ -57,32 +58,32 @@ def start(argv):
             else:
                 m.add(k)
 
-    args = pa.parse_args(args=argv)
+    args = pa.parse_args()
 
     logging.basicConfig(level=args.loglevel)
 
     try:
-        config = utils.load_config(args.config)
+        c = utils.load_config(args.config)
     except Exception as e:
         ErrorHandler.DEBUG = True
-        logging.exception("Exception during config initialisation", exception=e)
+        logging.exception("Exception during config initialisation: " + str(e))
         return
 
-    es = search_apis.ESClient(conf=config)
+    es = search_apis.ESClient(conf=c)
 
     try:
-        logging.info("CMD ARGS", args=str(args))
+        logging.info("CMD ARGS: " + str(args))
         args.func(args , es)
     except Exception as e:
-        logging.error("Uncaught exception", exc_info=True)
+        logging.error("Uncaught exception: " + str(e))
 
     end = time.time()
     secs = end - start
     msecs = secs * 1000
-    logging.info("END MAIN", time_elapsed=msecs)
+    logging.info("END MAIN time_elapsed: " + str(msecs))
 
     
 
 
 if __name__ == "__main__":
-    start(sys.argv[1:])
+    start()
