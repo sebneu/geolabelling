@@ -724,12 +724,13 @@ class ESClient(object):
                 "multi_match": {
                     "query": text,
                     "fields": ["name", "alternateName"],
-                    "type": "phrase_prefix"
-                },
-                #"sort": [
-                #    {"datasets": {"order": "desc"}}
-                #]
-            }
+                    "type": "phrase_prefix",
+                    "max_expansions" : 10
+                }
+            },
+            "sort": [
+                {"datasets": {"order": "desc"}}
+            ]
         }
         return self.es.search(index='geonames', doc_type='geonames', body=q, size=limit, from_=offset)
 
