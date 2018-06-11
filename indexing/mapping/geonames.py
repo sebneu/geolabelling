@@ -3,7 +3,7 @@ def mapping():
     return {
         "geonames": {
             "properties": {
-                "id": {"type": "keyword"},
+                "url": {"type": "keyword"},
                 "name": {"type": "text"},
                 "alternateName": {"type": "text"},
                 "parentFeature": {"type": "keyword"},

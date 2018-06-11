@@ -141,8 +141,11 @@ def search_kg(limit=10):
         return resp
 
     locationsearch = current_app.config['LOCATION_SEARCH']
+    es_search = current_app.config['ELASTICSEARCH']
     search_api = url_for('.search')
-    results = locationsearch.get_by_substring(q, search_api, limit=limit)
+
+    geonames_res = es_search.searchGeoNames(q, limit=limit)
+    results = search_apis.formatGeoNamesResults(geonames_res, search_api)
     resp = {
       "results": {
         "locations": {

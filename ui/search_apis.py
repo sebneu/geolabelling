@@ -585,7 +585,7 @@ class ESClient(object):
         if not count:
             q["_source"] = ["url", "column.header.value", "portal.*", "dataset.*",
                             'metadata_entities', 'data_entities', "metadata_temp_start",
-                            "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
+                            "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
 
         if temporal_constraints:
             if tmp == 'must':
@@ -716,6 +716,42 @@ class ESClient(object):
                 }
             })
         return q
+
+
+    def searchGeoNames(self, text, limit=10, offset=0):
+        q = {
+            "query": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["name", "alternateName"],
+                    "type": "phrase_prefix"
+                },
+                #"sort": [
+                #    {"datasets": {"order": "desc"}}
+                #]
+            }
+        }
+        return self.es.search(index='geonames', doc_type='geonames', body=q, size=limit, from_=offset)
+
+
+def formatGeoNamesResults(results, search_api):
+    res = []
+    for doc in results['hits']['hits']:
+        gn = doc['_source']
+        tmp = {
+            'title': gn['name'],
+            'url': search_api + '?' + urllib.urlencode({'l': gn['url']}),
+        }
+        #altNames = ', '.join(gn.get('alternateName', [])[:5])
+        #tmp['description'] = altNames
+        tmp['price'] = gn.get('datasets', '')
+        if 'countryName' in gn:
+            tmp['description'] = gn['countryName']
+
+        if 'parentFeatureName' in gn:
+            tmp['title'] += ' (' + gn['parentFeatureName'] + ')'
+        res.append(tmp)
+    return res
 
 
 MAX_STRING_LENGTH = 20

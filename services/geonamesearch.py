@@ -33,7 +33,7 @@ def index_all_geonames(es, es_names, indexName, db):
             geo_id = generate_id(db, gn_id)
             alt_names = [alt_name['_id'] for alt_name in db.keywords.find({'geonames': gn_id})]
 
-            body = {'url': gn_id, 'name': name, 'alternateName': alt_names}
+            body = {'url': gn_id, 'name': name, 'alternateName': alt_names, 'datasets': count}
             if country_id:
                 body['country'] = country_id
             if country:

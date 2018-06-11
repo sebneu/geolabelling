@@ -23,8 +23,7 @@ submodules=[
   ]
 
 
-def start(argv):
-    print argv
+def start():
     start= time.time()
     pa = argparse.ArgumentParser(description='Open Data search and labelling toolset.', prog='odgraph')
 
@@ -43,7 +42,7 @@ def start(argv):
     )
 
     config=pa.add_argument_group("Config")
-    config.add_argument('-c','--config', help="config file", dest='config')
+    config.add_argument('-c','--conf', help="config file")
     
     sp = pa.add_subparsers(title='Modules', description="Available sub modules")
     for sm in submodules:
@@ -59,18 +58,18 @@ def start(argv):
             else:
                 m.add(k)
 
-    args = pa.parse_args(args=argv)
+    args = pa.parse_args()
 
     logging.basicConfig(level=args.loglevel)
 
     try:
-        config = utils.load_config(args.config)
+        c = utils.load_config(args.conf)
     except Exception as e:
         ErrorHandler.DEBUG = True
         logging.exception("Exception during config initialisation: " + str(e))
         return
 
-    es = search_apis.ESClient(conf=config)
+    es = search_apis.ESClient(conf=c)
 
     try:
         logging.info("CMD ARGS: " + str(args))
@@ -87,4 +86,4 @@ def start(argv):
 
 
 if __name__ == "__main__":
-    start(sys.argv[1:])
+    start()
