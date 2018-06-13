@@ -22,11 +22,15 @@ def index_all_geonames(es, es_names, indexName, db):
         parent_id = gn.get('parent')
         parent = None
         if parent_id:
-            parent = db.geonames.find_one({'_id': parent_id})['name']
+            p = db.geonames.find_one({'_id': parent_id})
+            if p:
+                parent = p.get('name')
         country_id = gn.get('country')
         country = None
         if country_id:
-            country = db.geonames.find_one({'_id': country_id})['name']
+            c = db.geonames.find_one({'_id': country_id})
+            if c:
+                country = c.get('name')
 
         count = es.searchEntities([gn_id], count=True)['count']
         if count > 0:
