@@ -284,7 +284,7 @@ class ESClient(object):
     def get_all(self, limit, scroll_id):
         doc = {
             'size': limit,
-            '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url'],
+            '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities'],
             'query': {
                 'match_all': {}
             }
