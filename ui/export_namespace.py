@@ -5,6 +5,8 @@ from ui.rest_api import api
 import csv
 import StringIO
 import sparql
+import urllib
+
 
 
 get_ns = api.namespace('get', description='Operations to get the datasets')
@@ -110,6 +112,25 @@ class GetCSV(Resource):
         url = request.args.get("url")
         es_search = current_app.config['ELASTICSEARCH']
         return es_search.get(url)
+
+
+datasets_parser = api.parser()
+datasets_parser.add_argument('limit', type=int, required=False, default=1000)
+datasets_parser.add_argument('scroll_id', required=False)
+
+@get_ns.expect(datasets_parser)
+@get_ns.route('/datasets')
+@get_ns.doc(description="Get an indexed CSV by its URL")
+class GetCSV(Resource):
+    def get(self):
+        limit = request.args.get('limit')
+        scroll_id = request.args.get('scroll_id')
+        es_search = current_app.config['ELASTICSEARCH']
+        res = es_search.get_all(limit, scroll_id)
+        if '_scroll_id' in res:
+            scrollId = res['_scroll_id']
+            res['next'] = request.base_url + "?" + urllib.urlencode({'scroll_id': scrollId})
+        return res
 
 
 

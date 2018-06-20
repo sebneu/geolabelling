@@ -270,7 +270,7 @@ class ESClient(object):
 
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.uri', 'portal.id', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
         exclude = []
         if columns:
             include.append("column.*")
@@ -279,6 +279,24 @@ class ESClient(object):
         res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
                           _source_include=include)
         return res
+
+
+    def get_all(self, limit, scroll_id):
+        doc = {
+            'size': limit,
+            '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url'],
+            'query': {
+                'match_all': {}
+            }
+        }
+        if scroll_id:
+            res = self.es.scroll(scroll_id=scroll_id, scroll='1m')
+        else:
+            res = self.es.search(index=self.indexName, doc_type='table', body=doc, scroll='1m')
+        if '_shards' in res:
+            del res['_shards']
+        return res
+
 
     def _get_labelled_rows(self, in_rows, locationsearch):
         rows = []
