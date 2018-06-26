@@ -175,6 +175,7 @@ def name():
 
 def setupCLI(pa):
     pa.add_argument("-f", "--format", help='filter by file format', dest='format', default="csv")
+    pa.add_argument("--setup", action='store_true')
     pa.add_argument("-s", "--snapshot", help='snapshot', dest='snapshot', default=None)
     pa.add_argument("-p", "--portal", help='filter by portalid ( sperated by whitespace)', dest='portal', nargs='+')
     pa.add_argument("--url", help='index single URLs (sperated by whitespace)', dest='url', nargs='+')
@@ -195,6 +196,10 @@ def cli(args, es):
                 logging.info("ODPW ERROR: Please specify the (ADEQUATe) Portal Watch API in the config file")
                 return -1
             heideltime_path = config.get('heideltime')
+
+    if args.setup:
+        es.setup()
+        exit()
 
     logging.info("Getting portal Info")
     res = requests.get(odpwAPI+"portals/list")
