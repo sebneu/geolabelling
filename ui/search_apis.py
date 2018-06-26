@@ -210,7 +210,7 @@ class ESClient(object):
         if delete:
             logging.info("ESClient, delete index")
             self.es.indices.delete(index=self.indexName, ignore=[400, 404])
-        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping'](language)})
+        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping']})
 
         logging.info("ESClient, created index " + str(res))
 
