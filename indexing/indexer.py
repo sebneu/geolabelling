@@ -175,7 +175,7 @@ def name():
 
 def setupCLI(pa):
     pa.add_argument("-f", "--format", help='filter by file format', dest='format', default="csv")
-    pa.add_argument("--setup", action='store_true')
+    pa.add_argument("--setup")
     pa.add_argument("-s", "--snapshot", help='snapshot', dest='snapshot', default=None)
     pa.add_argument("-p", "--portal", help='filter by portalid ( sperated by whitespace)', dest='portal', nargs='+')
     pa.add_argument("--url", help='index single URLs (sperated by whitespace)', dest='url', nargs='+')
@@ -198,7 +198,7 @@ def cli(args, es):
             heideltime_path = config.get('heideltime')
 
     if args.setup:
-        es.setup()
+        es.setup(language=args.setup)
         exit()
 
     logging.info("Getting portal Info")

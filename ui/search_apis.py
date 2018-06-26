@@ -206,11 +206,11 @@ class ESClient(object):
             self.mappingName=mappingName
         self.mappingConfig = mappings[self.mappingName]
 
-    def setup(self, delete=True):
+    def setup(self, delete=True, language='standard'):
         if delete:
             logging.info("ESClient, delete index")
             self.es.indices.delete(index=self.indexName, ignore=[400, 404])
-        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping']})
+        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping'](language)})
 
         logging.info("ESClient, created index " + str(res))
 
