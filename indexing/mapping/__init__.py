@@ -4,7 +4,7 @@ import geonames
 
 mappings={
     'v1': {
-        'mapping':mapping(),
+        'mapping': mapping,
         'generator':generateFromYACPTable
     },
     'geonames': {

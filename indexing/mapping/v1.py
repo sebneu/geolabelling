@@ -69,7 +69,8 @@ def mapping(language='standard'):
                         "name": {"type": "text", "analyzer": language},
                         "publisher": {"type": "text", "analyzer": language},
                         "publisher_link": {"type": "keyword"},
-                        "publisher_email": {"type": "keyword"}
+                        "publisher_email": {"type": "keyword"},
+                        "keywords": {"type": "text", "analyzer": language}
                     }
                 },
                 "transaction_time": {"type": "date"},

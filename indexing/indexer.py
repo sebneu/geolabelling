@@ -44,6 +44,7 @@ def get_dataset_info(dataset, portal, format, heideltime_path, language):
     dataset_name = dataset.get('name', '')
     dataset_link = dataset.get('@id', '')
     dataset_description = dataset.get('description', '')
+    keywords = dataset.get('keywords', '')
     publisher = dataset.get('publisher', {}).get('name', '')
     publisher_link = dataset.get('publisher', {}).get('@id', '')
     publisher_email = dataset.get('publisher', {}).get('email', '')
@@ -80,6 +81,8 @@ def get_dataset_info(dataset, portal, format, heideltime_path, language):
                     dsfields['dataset_link'] = dataset_link
                 if dataset_description:
                     dsfields['dataset_description'] = dataset_description
+                if keywords and isinstance(keywords, list):
+                    dsfields['keywords'] = keywords
                 if publisher:
                     dsfields['publisher'] = publisher
                 if publisher_link:
