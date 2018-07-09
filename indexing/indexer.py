@@ -125,7 +125,7 @@ def getURLInfo(datamonitorAPI,url):
 
 urlPortalID={}
 
-def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False, max_file_size=-1):
+def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False, max_file_size=-1, store_labels=False):
     status=defaultdict(int)
     portal=portalInfo['id']
 
@@ -134,7 +134,7 @@ def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, 
 
         try:
             if not repair or (repair and not es.exists(url)):
-                resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging)
+                resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging, store_labels=store_labels)
                 logging.info("ES INDEXED, URL: " + url + ", status: " + resp['result'])
                 status['ok']+=1
         except Exception as e:
@@ -146,13 +146,13 @@ def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, 
 
 
 
-def bulkIndex(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, max_file_size=-1, bulk=10):
+def bulkIndex(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, max_file_size=-1, bulk=10, store_labels=False):
     portal=portalInfo['id']
     tables_bulk = []
 
     for i, (url, content, dsfields) in enumerate(getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size)):
         if (i+1) % bulk == 0:
-            res = es.bulkIndexTables(tables_bulk, portalInfo=portalInfo, geotagging=geotagging)
+            res = es.bulkIndexTables(tables_bulk, portalInfo=portalInfo, geotagging=geotagging, store_labels=store_labels)
             errors = ''
             if res and 'errors' in res:
                 errors = res['errors']
@@ -187,6 +187,8 @@ def setupCLI(pa):
     pa.add_argument("--max-size", help='set maximum file size', type=float)
     pa.add_argument("--bulk", help='bulk insert to elasticsearch', action='store_true')
     pa.add_argument("--disable-heideltime", help='disable Heideltime tagging to increase indexing speed', action='store_true')
+    pa.add_argument("--store-labels", help='add URLs + labels for an indexed document', action='store_true')
+
 
 def cli(args, es):
     heideltime_path = None
@@ -249,7 +251,7 @@ def cli(args, es):
             logging.info("Starting indexing: " + portal + ", snapshot: " + str(snapshot) + ", format: " +args.format)
             if args.bulk:
                 bulkIndex(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang,
-                               geotagging=geotagging, max_file_size=args.max_size)
+                               geotagging=geotagging, max_file_size=args.max_size, store_labels=args.store_labels)
 
             else:
-                status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size)
+                status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size, store_labels=args.store_labels)

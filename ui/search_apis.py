@@ -215,7 +215,7 @@ class ESClient(object):
         logging.info("ESClient, created index " + str(res))
 
 
-    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging):
+    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels):
         """ This reindexes the table with id URL"""
         download_url = None
         if not content:
@@ -243,6 +243,9 @@ class ESClient(object):
                 meta_loc_ann = geotagging.from_metadatada(datasetInfo['dataset'], fields=['dataset_name', 'publisher'], orig_country_code=portalInfo['iso'])
                 if meta_loc_ann:
                     dt['metadata_entities'] = meta_loc_ann
+                    if store_labels:
+                        dt['metadata_labels'] = [geotagging.get_label(m) for m in meta_loc_ann]
+
             for f in datasetInfo:
                 dt[f] = datasetInfo[f]
 
@@ -251,20 +254,20 @@ class ESClient(object):
             regions = set()
             for l in meta_loc_ann:
                 regions |= geotagging.get_all_subregions(l, portalInfo['iso'])
-            loc_annotation = geotagging.from_dt(dt, orig_country_code=portalInfo['iso'], regions=regions)
+            loc_annotation = geotagging.from_dt(dt, orig_country_code=portalInfo['iso'], regions=regions, store_labels=store_labels)
 
         dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
         return dt
 
-    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None):
-        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging)
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False):
+        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels)
         return self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)
 
-    def bulkIndexTables(self, tables_bulk, portalInfo, geotagging):
+    def bulkIndexTables(self, tables_bulk, portalInfo, geotagging, store_labels):
         body = u''
         for url, content, dsFields in tables_bulk:
             body += u'{"index":{"_type":"table", "_id": "' + url + u'"}} \n'
-            dt = self.get_index_body(url=url, content=content, fileName=None, portalInfo=portalInfo, datasetInfo=dsFields, geotagging=geotagging)
+            dt = self.get_index_body(url=url, content=content, fileName=None, portalInfo=portalInfo, datasetInfo=dsFields, geotagging=geotagging, store_labels=store_labels)
             body += json.dumps(dt) + u' \n'
         return self.es.bulk(index=self.indexName, doc_type="table", body=body)
 

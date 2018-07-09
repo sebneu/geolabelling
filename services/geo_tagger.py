@@ -128,7 +128,7 @@ class GeoTagger:
         return list(set(disamb) | set(aggr))
 
 
-    def from_dt(self, dt, orig_country_code=None, min_matches=0.5, min_date_matches=0.8, regions=list()):
+    def from_dt(self, dt, orig_country_code=None, min_matches=0.5, min_date_matches=0.8, regions=list(), store_labels=False):
         country_id = self.get_country_by_iso(orig_country_code)
 
         #cols = [[] for _ in range(dt['no_columns'])]
@@ -186,6 +186,7 @@ class GeoTagger:
         # process mapped cols
         for col, disamb, confidence, res_col, source in col_results:
             dt['data_entities'] += res_col
+
             dt['column'][col]['entities'] = disamb
             dt['column'][col]['source'] = source
             for row, e in zip(dt['row'], disamb):
@@ -194,6 +195,9 @@ class GeoTagger:
                 row['entities'][col] = e
 
         dt['data_entities'] = list(set(dt['data_entities']))
+        if store_labels and len(dt['data_entities']) > 0:
+            dt['data_labels'] = [self.get_label(m) for m in dt['data_entities']]
+
         if len(dt['data_entities']) == 0:
             del dt['data_entities']
             return False
@@ -474,3 +478,9 @@ class GeoTagger:
             for sub_r in q:
                 regions.add(get_geonames_id(sub_r['_id']))
         return regions
+
+    def get_label(self, geo_id):
+        q = self.geonames.find_one({'_id': geo_id})
+        if q:
+            return q.get('name')
+        return None

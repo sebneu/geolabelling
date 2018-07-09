@@ -83,6 +83,8 @@ def mapping(language='standard'):
 
                 "metadata_entities": {"type": "keyword"},
                 "data_entities": {"type": "keyword"},
+                "metadata_labels": {"type": "text", "analyzer": language},
+                "data_labels": {"type": "text", "analyzer": language},
 
                 "no_rows": {"type": "long"},
                 "no_columns": {"type": "long"},
