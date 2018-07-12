@@ -11,7 +11,7 @@ import random
 from elasticsearch import Elasticsearch
 
 from indexing.mapping import mappings
-from openstreetmap.osm_inserter import get_geonames_url
+from openstreetmap.osm_inserter import get_geonames_url, get_geonames_id
 from ui.utils import mongo_collections_utils
 from ui.utils import export_rdf
 
@@ -512,7 +512,7 @@ class ESClient(object):
         }
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False,
+    def searchEntitiesAndText(self, entities, term, limit=10, offset=0, intersect=True,
                               temporal_constraints=None):
         tmp = 'should'
         if intersect:
@@ -524,19 +524,41 @@ class ESClient(object):
                 "bool": {
                     tmp: [
                         {
-                            "nested": {
-                                "path": "row",
-                                "query": {
-                                    "constant_score": {
-                                        "filter": {
-                                            "terms": {
-                                                "row.entities": entities
+                            "bool": {
+                                "should": [
+                                    {
+                                        "nested": {
+                                            "path": "row",
+                                            "query": {
+                                                "constant_score": {
+                                                    "filter": {
+                                                        "terms": {
+                                                            "row.entities": entities
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "inner_hits": {},
+                                            "boost": 2
+                                        }
+                                    }, {
+                                        "constant_score": {
+                                            "filter": {
+                                                "terms": {
+                                                    "metadata_entities": entities
+                                                }
+                                            }
+                                        }
+                                    }, {
+                                        "constant_score": {
+                                            "filter": {
+                                                "terms": {
+                                                    "data_entities": entities
+                                                }
                                             }
                                         }
                                     }
-                                },
-                                "inner_hits": {},
-                                "boost": 2
+                                ]
                             }
                         },
                         {
@@ -562,19 +584,11 @@ class ESClient(object):
                 q['query']['bool']['must'] += temporal_constraints
             else:
                 q['query']['bool']['must'] = temporal_constraints
-        if locations:
-            q['query']['bool'][tmp].append({
-                "constant_score": {
-                    "filter": {
-                        "terms": {
-                            "metadata_entities": entities
-                        }
-                    }
-                }
-            })
+
+            print q
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None, count=False):
+    def searchEntities(self, entities, limit=10, offset=0, intersect=False, temporal_constraints=None, count=False):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
@@ -598,6 +612,22 @@ class ESClient(object):
                                 "inner_hits": {},
                                 "boost": 2
                             }
+                        }, {
+                            "constant_score": {
+                                "filter": {
+                                    "terms": {
+                                        "metadata_entities": entities
+                                    }
+                                }
+                            }
+                        }, {
+                            "constant_score": {
+                                "filter": {
+                                    "terms": {
+                                        "data_entities": entities
+                                    }
+                                }
+                            }
                         }
                     ]
                 }
@@ -613,16 +643,7 @@ class ESClient(object):
                 q['query']['bool']['must'] += temporal_constraints
             else:
                 q['query']['bool']['must'] = temporal_constraints
-        if locations:
-            q['query']['bool'][tmp].append({
-                "constant_score": {
-                    "filter": {
-                        "terms": {
-                            "metadata_entities": entities
-                        }
-                    }
-                }
-            })
+
         if count:
             return self.es.count(index=self.indexName, doc_type='table', body=q)
         else:
@@ -756,13 +777,13 @@ class ESClient(object):
         return self.es.search(index='geonames', doc_type='geonames', body=q, size=limit, from_=offset)
 
 
-def formatGeoNamesResults(results, search_api):
+def formatGeoNamesResults(results):
     res = []
     for doc in results['hits']['hits']:
         gn = doc['_source']
         tmp = {
             'title': gn['name'],
-            'url': search_api + '?' + urllib.urlencode({'l': gn['url']}),
+            'geoid': 'gn:' + get_geonames_id(gn['url']),
         }
         #altNames = ', '.join(gn.get('alternateName', [])[:5])
         #tmp['description'] = altNames

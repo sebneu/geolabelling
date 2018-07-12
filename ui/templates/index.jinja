@@ -144,11 +144,26 @@
             </div>
         {% endif %}
 
-        <div class="ui top sticky text vertical segment">
-            <div class="ui fluid category search">
-                <div class="ui fluid icon input">
-                    <input class="prompt" type="text" placeholder="Search..." id="keyword" value="{% if "keyword" in data %}{{data.keyword}}{% else %}{% endif %}">
-                    <i class="search icon"></i>
+        <div class="ui top text vertical segment">
+            <div class="ui grid">
+                <div class="ten wide column">
+                    <div class="ui fluid category search" id="geosearch">
+                        <div class="ui fluid input">
+                            <input class="prompt" type="text" placeholder="Geo-location .." id="geoentity" >
+                        </div>
+                    </div>
+                </div>
+                <div class="four wide column">
+                    <div class="ui fluid search">
+                        <div class="ui fluid input">
+                            <input class="prompt" type="text" placeholder="Keyword .." id="keyword">
+                        </div>
+                    </div>
+                </div>
+                <div class="two wide column">
+                    <button class="circular ui large icon primary button startsearch" >
+                      <i class="icon search"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -352,7 +367,7 @@
 
 {% block script %}
 
-    $('.ui.search')
+    $('#geosearch')
       .search({
         apiSettings: {
           url: 'searchapi?q={query}'
@@ -360,6 +375,31 @@
         type: 'category'
       })
     ;
+
+    $(".button.startsearch").click(function() {
+       var a = "{{ url_for('ui.search')}}" + "?";
+       var x = null;
+       var y = null;
+
+       var input = $('#geosearch').search('get value');
+       if(input.length > 0){
+           var geoentity = $('#geosearch').search('get result', input);
+           x = "l=" + geoentity['geoid'];
+       }
+
+       var keyword = document.getElementById("keyword").value;
+       if(keyword.length > 0){
+           y = "q=" + keyword;
+       }
+
+       if(x && y) {
+           window.location.href = a + x + "&" + y;
+       } else if(x) {
+           window.location.href = a + x;
+       } else if(y) {
+           window.location.href = a + y;
+       }
+    });
 
     $("#results").on('click', '.preview', function() {
         url = $(this).closest('.ui .grid');
@@ -469,17 +509,6 @@
             });
     });
 
-
-    $("#keyword").keyup(function(event){
-        if(event.keyCode == 13){
-           var input = document.getElementById("keyword").value;
-           a = "{{ url_for('ui.search')}}"
-           if(input.length > 0){
-           a+="?q="+input
-               window.location.href=a
-           }
-        }
-    });
 
     $('.ui.dropdown')
       .dropdown()

@@ -145,7 +145,7 @@ def search_kg(limit=10):
     search_api = url_for('.search')
 
     geonames_res = es_search.searchGeoNames(q, limit=limit)
-    results = search_apis.formatGeoNamesResults(geonames_res, search_api)
+    results = search_apis.formatGeoNamesResults(geonames_res)
     resp = {
       "results": {
         "locations": {
@@ -178,7 +178,7 @@ def search_kg(limit=10):
     return resp
 
 
-def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, offset=0):
+def get_search_results(ls, q, p, row_cutoff, limit=10, offset=0):
     temp_start = request.args.get("start")
     temp_end = request.args.get("end")
     temp_mstart = request.args.get("mstart")
@@ -195,10 +195,12 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
     temporal_constraints = es_search.get_temporal_constraints(temp_mstart, temp_mend, temp_start, temp_end, pattern)
 
     if ls:
+        ls = [get_geonames_url(l[3:]) if l.startswith('gn:') else l for l in ls]
+
         if q:
-            res = es_search.searchEntitiesAndText(ls, q, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntitiesAndText(entities=ls, term=q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         else:
-            res = es_search.searchEntities(ls, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntities(entities=ls, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
@@ -210,9 +212,6 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
             if 'geonames' in l:
                 # entity information
                 name = locationsearch.get(l)['name']
-                data['keyword'] = name
-                if len(ls) > 1:
-                    data['keyword'] = ''
 
                 entity['name'] = name
                 entity['external'] = locationsearch.get_external_links(l)
@@ -229,9 +228,6 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
                     geon = osm_entry['geonames_ids'][0]
                     geon = get_geonames_url(geon)
                 name = osm_entry['name']
-                data['keyword'] = name
-                if len(ls) > 1:
-                    data['keyword'] = ''
 
                 entity['name'] = name
                 parents = []
@@ -246,7 +242,6 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
                     entity['parents'] = parents[LEADING_PARENTS:]
             else:
                 nuts_e = locationsearch.get_nuts_by_geovocab(l)
-                data['keyword'] = nuts_e['name']
                 entity['name'] = nuts_e['name']
                 parents = []
                 search_api = url_for('.search')
@@ -263,19 +258,17 @@ def get_search_results(ls, q, p, row_cutoff, aggregated_locations, limit=10, off
         country_code, code = p.split('#')
         country = locationsearch.get_country(country_code)
         entities = locationsearch.get_postalcode_mappings_by_country(code, country)
-        res = es_search.searchEntities(entities, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+        res = es_search.searchEntities(entities=entities, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res, row_cutoff)
         # entity information
         search_api = url_for('.search')
         link = search_api + '?' + urllib.urlencode({'q': country['name'].encode('utf-8'), 'l': country['_id']})
         data['entities'].append({'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]})
-        data['keyword'] = code
     elif q:
         text_res = es_search.searchText(q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += text_res['hits']['total']
         data['results'] += search_apis.format_results(text_res, row_cutoff)
-        data['keyword'] = q
 
     # format entities -> convert to links
     for res in data['results']:
@@ -293,9 +286,8 @@ def search():
     ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
-    if ls:
-        q = None
-    data = get_search_results(ls, q, p, row_cutoff=True, aggregated_locations=True, limit=limit, offset=10 * (page-1))
+
+    data = get_search_results(ls, q, p, row_cutoff=True, limit=limit, offset=10 * (page-1))
 
     data['currentPage'] = page
     data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, data['total'], limit))]
@@ -315,7 +307,7 @@ def locationsearch():
     ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
-    data = get_search_results(ls, q, p, row_cutoff=False, aggregated_locations=True)
+    data = get_search_results(ls, q, p, row_cutoff=False)
     return jsonify(data)
 
 
