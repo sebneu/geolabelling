@@ -1,0 +1,5 @@
+"Tourismus - Ankünfte und Nächtigungen in Oberösterreich","http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtStat/OGD_Ank_Naecht_KJ.csv"
+"Rechnungsabschluss des Landes Oberösterreich","http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_dirFin/RA_2016_Ausgaben_nach_Finanzpositionen.csv"
+"Alten- und Pflegeheime in Oberösterreich","http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtSo/ooe_APH.csv"
+"Rechnungsabschluss des Landes Oberösterreich","http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_dirFin/RA_2015_Ausgaben.csv"
+"Sanierung von Wohngebäude mit mehr als 3 Wohnungen - Bewilligungen 2016","http://data.ooe.gv.at/files/cms/Mediendateien/OGD/ogd_abtWo/WO_2016_Sanierung_Wohngebaeude.csv"

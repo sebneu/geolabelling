@@ -1,0 +1,31 @@
+{% extends "base_layout.jinja" %}
+
+{% set active_page = "semantics" -%}
+{% block content %}
+<div class="ui  container">
+
+    <h2 class="ui divider horizontal header">{{data['title']}}
+    <div class="sub header">{{data['publisher']}}</div>
+    </h2>
+  <div class="ui center aligned segment"><h4><a href="{{data['portal']}}" target="_blank">{{data['portal']}}</a></h4></div>
+
+  <div class="content segment" id="table_preview" style="height:400px;">
+    {{data['data']}}
+  </div>
+
+  <div class="ui aligned segment">
+    {% for l in data['locations'] %}
+        <a class="ui label" href="{{l['uri']}}" target="_blank">
+          <i class="green marker icon"></i>
+          {{l['name']}}
+        </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block script %}
+
+{% endblock %}
