@@ -3,27 +3,34 @@
 {% set active_page = "about" -%}
 {% block content %}
 <div class="ui  container">
-    <h2 class="ui header">Geo-semantic labelling of Open Data</h2>
+    <h2 class="ui header">Enabling Spatio-temporal search in Open Data</h2>
     <div class="container ui">
                         <p>
                             This is a project by the <a href="http://ai.wu.ac.at/">Institute for Information Business</a>
                             at WU Vienna (<a href="http://wu.ac.at/">Vienna University of Economics and Business</a>).
 
-                            The aim of this work is to detect and establish links to geo-entities in the datasets found on Open Data catalogs and their respective metadata descriptions and link them to a knowledge graph of geo-entities.
+                            The aim of this work is to annotate a large corpus of tabular datasets from open data portals,
+                            and enable structured, spatio-temporal search over Open Data catalogs through a spatio-temporal
+                            knowledge graph, both via a search interface as well as via a SPARQL endpoint.
+
                             This knowledge graph is constructed by integrating and interlinking
                             <ul>
                                 <li>the openly available geospatial datarepository GeoNames</li>
                                 <li>the map service OpenStreetMap</li>
                                 <li>country-specific sets of postal codes</li>
-                                <li>the European Union’s classificationsystem NUTS</li>
+                                <li>the European Union’s classification system NUTS</li>
+                                <li><a href="http://perio.do/">Periodo</a>, a repository of historical, art-historical, and archaeological periods</li>
+                                <li>the geo-cooridinates and temporal information available in Wikidata</li>
                             </ul>
                             This base knowledge graph is used to add semantic labels to the open datasets, i.e.,
                             we heuristically disambiguate the geo-entities in CSV columns using the context of the labels and
                             the hierarchical graph structure of our base knowledge graph.
                         </p>
 
+
                         <p>
-                        Currently, this showcase user interface contains CSV tables from four Open Data portals:
+                        Currently, this showcase user interface contains CSV tables from several European data portals
+                        indexed at the <a href="http://data.wu.ac.at/portalwatch/">Open Data Portal Watch</a>, e.g.:
                         <div class="ui list">
                             <div class="item">
                                 <i class="external middle aligned icon"></i>
@@ -34,7 +41,7 @@
                             <div class="item">
                                 <i class="external middle aligned icon"></i>
                                 <div class="content">
-                                    <a href="https://www.opendataportal.at/" class="header">opendataportal.at</a>
+                                    <a href="https://data.gov.uk/" class="header">data.gov.uk</a>
                                 </div>
                             </div>
                             <div class="item">
@@ -49,6 +56,12 @@
                                     <a href="https://offenedaten.de/" class="header">offenedaten.de</a>
                                 </div>
                             </div>
+                            <div class="item">
+                                <i class="external middle aligned icon"></i>
+                                <div class="content">
+                                    <a href="https://www.data.gouv.fr/" class="header">data.gouv.fr</a>
+                                </div>
+                            </div>
                         </p>
                         <p>
                             This is a research project and we try to add more features and fix bugs.
@@ -56,7 +69,70 @@
                         </p>
     </div>
 
-    <h2 class="ui header">Contact</h2>
+    <h3 class="ui header">Related Publications</h3>
+    <div class="ui relaxed list">
+        <div class="item">
+            <i class="file alternate icon"></i>
+            <div class="content">
+                <div class="header">Geo-Semantic Labelling of Open Data</div>
+                <div class="meta">
+                    <span>Sebastian Neumaier, Vadim Savenkov, and Axel Polleres</span>
+                </div>
+                <div class="description">
+                    <p>In 14th International Conference on Semantic Systems (SEMANTiCS), Vienna, Austria, September 2018. to appear.</p>
+                </div>
+                <div class="extra">
+                    <span class="ui label">conference</span><span class="ui label">2018</span>
+                </div>
+            </div>
+        </div>
+        <div class="item">
+            <i class="file alternate icon"></i>
+            <div class="content">
+                <div class="header">Enabling Spatio-Temporal Search in Open Data</div>
+                <div class="meta">
+                    <span>Sebastian Neumaier and Axel Polleres</span>
+                </div>
+                <div class="extra">
+                    <a href="http://epub.wu.ac.at/6348/"><div class="ui blue label">
+                        <i class="download icon"></i> technical report
+                    </div></a>
+                    <span class="ui label">2018</span>
+                </div>
+            </div>
+        </div>
+        <div class="item">
+            <i class="file alternate icon"></i>
+            <div class="content">
+                <div class="header"><a href="https://reboting.com/">reboting.com</a>: Towards geo-search and visualization of Austrian Open Data</div>
+                <div class="meta">
+                    <span>Erich Heil and Sebastian Neumaier</span>
+                </div>
+                <div class="description">
+                    <p>In Proceedings of the 15th European Semantic Web Conference (ESWC2018 – Posters and Demos Track), Heraklion, Crete, Greece, June 2018.</p>
+                </div>
+                <div class="extra">
+                    <a href="https://sebneumaier.files.wordpress.com/2018/05/eswc18_demo_towards_geo_search_and_visualization_of_aod.pdf"><div class="ui blue label">
+                        <i class="download icon"></i> paper
+                    </div></a>
+                    <a href="https://sebneumaier.files.wordpress.com/2018/05/reboting_poster.pdf"><div class="ui blue label">
+                        <i class="download icon"></i> poster
+                    </div></a>
+                    <span class="ui label">demo</span><span class="ui label">2018</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="ui header">Source Code</h3>
+    <div class="container ui">
+        The source code is available on
+        <a href="https://github.com/sebneu/geolabelling/"><div class="ui blue label">
+            <i class="github icon"></i> Github
+        </div></a>
+    </div>
+
+    <h3 class="ui header">Contact</h3>
     <div class="ui relaxed list">
         <div class="item">
             <i class="large user middle aligned icon"></i>

@@ -3,6 +3,7 @@ import logging
 import xml.etree.ElementTree as ET
 import os
 import logging
+import itertools
 
 import requests
 import urllib
@@ -96,7 +97,7 @@ def export_polygons(client, args):
         if not os.path.exists(lvl_dir):
             os.mkdir(lvl_dir)
 
-        for region in geonames.find({'admin_level': admin_level, 'country': country['_id']}):
+        for region in geonames.find({'admin_level': admin_level, 'country': country['_id'], 'geojson.type': 'Polygon'}):
             if 'geojson' in region:
                 geojson = region['geojson']
                 g_id = get_geonames_id(region['_id'])
@@ -135,6 +136,48 @@ def get_osm_id(candidates, admin_level):
                     select = req.json()
                     return (osm_id, select['geojson'])
     return None
+
+
+def get_polygons_via_wiki(client, args):
+
+    db = client.geostore
+    countries = db.countries
+    geonames = db.geonames
+
+    all_c = []
+    if args.country:
+        all_c.append(countries.find_one({'_id': args.country}))
+    else:
+        for c in countries.find({'continent': 'EU'}):
+            if c['iso'] not in args.skip:
+                all_c.append(c)
+
+    for c in all_c:
+        country = c['_id']
+
+        res1 = geonames.find({'country': country, 'geojson': {'$exists': False}, 'osm_relation': {'$exists': True}})
+        res2 = geonames.find({'country': country, 'geojson.type': 'Point', 'osm_relation': {'$exists': True}})
+        for region in itertools.chain(res1, res2):
+
+            osm_id = region['osm_relation']
+
+            select_url = 'http://nominatim.openstreetmap.org/reverse?osm_id={0}&osm_type=R&polygon_geojson=1&format=json'\
+                .format(osm_id)
+
+            # waiting time to reduce heavy use
+            time.sleep(1)
+            s = requests.Session()
+            s.headers.update({'referrer': DATA_WU_REFERRER})
+            req = s.get(select_url)
+            if req.status_code == 200:
+                select = req.json()
+
+                if 'geojson' in select:
+                    geojson = select['geojson']
+                    geonames.update_one({'_id': region['_id']}, {'$set': {'osm_id': osm_id, 'geojson': geojson}})
+            else:
+                print 'error:', req.status_code
+                print req.content
 
 
 def get_polygons(client, args):
@@ -224,7 +267,7 @@ def in_geonames_parents(geo_id, ids):
     # check if geonames_id is more specific or general
     all_parents = []
     for x in ids:
-        all_parents += get_all_parent_ids(client, geonamesId_to_url(x))
+        all_parents += get_all_parent_ids(client.geostore, geonamesId_to_url(x))
     return geonamesId_to_url(geo_id) in all_parents
 
 
@@ -324,6 +367,12 @@ if __name__ == "__main__":
     subparser.add_argument('--level', type=int, default=6)
     subparser.add_argument('--update', action='store_true')
     subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
+
+    subparser = subparsers.add_parser('osm-polygons-2')
+    subparser.set_defaults(func=get_polygons_via_wiki)
+    subparser.add_argument('--country')
+    subparser.add_argument('--skip', action='append', help='ISO2 codes of countries', default=[])
+
 
     subparser = subparsers.add_parser('insert-osm')
     subparser.set_defaults(func=read_osm_files)

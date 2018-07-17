@@ -1,0 +1,125 @@
+{% extends "base_layout.jinja" %}
+{% set active_page = "sparql" -%}
+
+
+{% block headcss %}
+    <link href='//cdn.jsdelivr.net/yasgui/2.5.0/yasgui.min.css' rel='stylesheet' type='text/css'/>
+    <link href='http://cdn.jsdelivr.net/yasqe/2.2/yasqe.min.css' rel='stylesheet' type='text/css'/>
+{% endblock %}
+
+
+{% block headscripts %}
+    <script src='//cdn.jsdelivr.net/yasgui/2.5.0/yasgui.min.js'></script>
+    <script src='http://cdn.jsdelivr.net/yasqe/2.2/yasqe.bundled.min.js'></script>
+{% endblock %}
+
+{% block headerstyle %}
+      .yasgui .endpointText {display:none !important;}
+{% endblock %}
+
+
+{% block content %}
+<div class="ui  container">
+    <h2 class="ui header">SPARQL Endpoint</h2>
+    <div class="container ui">
+        <div class="ui segment">
+	        <div id='yasgui'></div>
+        </div>
+    </div>
+
+    <h2 class="ui header">Available Graphs</h2>
+    <p>The following datasets are available as named graphs:</p>
+    <div class="ui relaxed divided list">
+      <div class="item">
+        <i class="angle right middle aligned icon"></i>
+        <div class="content">
+          <a class="header">http://data.wu.ac.at/odgraphsearch/rdf#spatial</a>
+          <div class="description">The spatial components of the knowledge graph</div>
+        </div>
+      </div>
+      <div class="item">
+        <i class="angle right middle aligned icon"></i>
+        <div class="content">
+          <a class="header">http://data.wu.ac.at/odgraphsearch/rdf#temporal</a>
+          <div class="description">The temporal components of the knowledge graph</div>
+        </div>
+      </div>
+      <div class="item">
+        <i class="angle right middle aligned icon"></i>
+        <div class="content">
+          <a class="header">http://data.wu.ac.at/odgraphsearch/rdf#datasets</a>
+          <div class="description">The indexed and annotated datasets</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="ui header">Example Queries</h2>
+    <div class="ui segment">
+        <p></p>
+        <div id='ex_1'></div>
+    </div>
+
+</div>
+{% endblock %}
+
+
+{% block script %}
+  // Example 1
+  var ex1 = "" +
+"PREFIX wd: <http://www.wikidata.org/entity/>\n" +
+"PREFIX timex: <http://data.wu.ac.at/ns/timex#>\n" +
+"PREFIX csvwx: <http://data.wu.ac.at/ns/csvwx#>\n" +
+"PREFIX dcat: <http://www.w3.org/ns/dcat#>\n" +
+"PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
+"PREFIX dcterms: <http://purl.org/dc/terms/>\n" +
+"PREFIX owl: <http://www.w3.org/2002/07/owl#>\n" +
+"PREFIX csvw: <http://www.w3.org/ns/csvw#>\n" +
+"PREFIX gn: <http://www.geonames.org/ontology#>\n" +
+"\n" +
+"SELECT ?d ?url ?cTime ?sL WHERE {\n" +
+"  # get the \"Anschluss movement\"\n" +
+"  ?p rdfs:label ?L.\n" +
+"  FILTER (CONTAINS(?L, \"Anschluss movement\") ) .\n" +
+"  ?p timex:hasStartTime ?start ;\n" +
+"       timex:hasEndTime ?end ;\n" +
+"       dcterms:spatial ?sp .\n" +
+"  # find the GeoNames entities\n" +
+"  ?country owl:sameAs ?sp .\n" +
+"  ?d dcat:distribution [ dcat:accessURL ?url ] .\n" +
+"  [] csvw:url ?url ;\n" +
+"     csvw:tableSchema ?s .\n" +
+"  # find a cell where the date falls in the range\n" +
+"  # of the found period\n" +
+"  ?s csvw:column ?col1 .\n" +
+"  ?col1 csvwx:cell [\n" +
+"    csvwx:hasTime ?cTime\n" +
+"  ]\n" +
+"  FILTER((?cTime >= ?start) &&\n" +
+"         (?cTime <= ?end))\n" +
+"  # filter dataset where the geo-entity has the spatial\n" +
+"  # coverage area of the found period as the parent country\n" +
+"  ?d csvwx:refersToEntity [\n" +
+"    gn:parentCountry ?country ;\n" +
+"    rdfs:label ?sL\n" +
+"  ]\n" +
+"}\n"
+
+
+
+
+  var yasgui = YASGUI(document.getElementById("yasgui"), {
+    yasqe:{sparql:{endpoint:'http://data.wu.ac.at/odgraphsearch/query/'}}
+  });
+  tab = yasgui.current()
+  if(tab) {
+     tab.yasqe.addPrefixes({"timex": "http://data.wu.ac.at/ns/timex#", "csvwx": "http://data.wu.ac.at/ns/csvwx#"})
+  }
+
+  var yasqe1 = YASQE(document.getElementById("ex_1"), {
+	sparql: {
+		showQueryButton: false,
+		endpoint:'http://data.wu.ac.at/odgraphsearch/query/'
+	}
+  });
+  yasqe1.setValue(ex1)
+{% endblock %}

@@ -1,14 +1,19 @@
 import json
+import logging
 from collections import defaultdict
 
-import yaml
-import pymongo
+import datetime
+from pyyacp.yacp import YACParser
+from pyyacp.datatable import parseDataTables
 from pymongo import MongoClient
 import urllib
+import random
 from elasticsearch import Elasticsearch
 
-from openstreetmap.osm_inserter import get_geonames_url
+from indexing.mapping import mappings
+from openstreetmap.osm_inserter import get_geonames_url, get_geonames_id
 from ui.utils import mongo_collections_utils
+from ui.utils import export_rdf
 
 import rdflib
 
@@ -67,9 +72,10 @@ class LocationSearch:
         results = []
         # for res in self.geonames.find({'name': {'$regex': q, '$options': 'i'}}).limit(limit):
 
-        cursor = self.geonames.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
+        cursor = self.geonames.find({'$text': {'$search': q}}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
-        cursor.limit(limit)
+        if limit >= 0:
+            cursor.limit(limit)
 
         for res in cursor:
             tmp = {
@@ -92,7 +98,8 @@ class LocationSearch:
 
         cursor = self.osm.find({'$text': {'$search': q}, 'datasets': True}, {'score': {'$meta': "textScore"}})
         cursor.sort([('score', {'$meta': 'textScore'})])
-        cursor.limit(limit)
+        if limit >= 0:
+            cursor.limit(limit)
 
         for res in cursor:
             tmp = {
@@ -110,27 +117,37 @@ class LocationSearch:
 
     def get_postalcodes(self, q, search_api, limit=5):
         results = []
-        for res in self.postalcodes.find({'_id': {'$regex': '^' + q}}).limit(limit):
-            if 'countries' in res:
-                for country in res['countries']:
-                    tmp = {
-                        'title': res['_id']
-                    }
-                    c = self.countries.find_one({'_id': country['country']})
-                    if 'name' in c:
-                        tmp['price'] = c['name']
-                        tmp['url'] = search_api + '?' + urllib.urlencode(
-                            {'p': c['iso'] + '#' + res['_id']})
-                    if 'region' in country:
-                        region = self.geonames.find_one({'_id': country['region']})
-                        if region and 'name' in region:
-                            tmp['description'] = region['name']
-                    results.append(tmp)
+        cursor = self.postalcodes.find({'_id': {'$regex': '^' + q}})
+        if limit >= 0:
+            cursor.limit(limit)
+        for res in cursor:
+            try:
+                if 'countries' in res:
+                    for country in res['countries']:
+                        tmp = {
+                            'title': res['_id']
+                        }
+                        c = self.countries.find_one({'_id': country['country']})
+                        if 'name' in c:
+                            tmp['price'] = c['name']
+                            tmp['url'] = search_api + '?' + urllib.urlencode(
+                                {'p': c['iso'] + '#' + res['_id']})
+                        if 'region' in country:
+                            region = self.geonames.find_one({'_id': country['region']})
+                            if region and 'name' in region:
+                                tmp['description'] = region['name']
+                        results.append(tmp)
+            except Exception as e:
+                logging.error(str(e))
         return results
 
     def get_nuts(self, q, search_api, limit=5):
         results = []
-        for res in self.nuts.find({'_id': {'$regex': '^' + q}}).limit(limit):
+        cursor = self.nuts.find({'_id': {'$regex': '^' + q}})
+        if limit >= 0:
+            cursor.limit(limit)
+
+        for res in cursor:
             resp = {'l': mongo_collections_utils.get_nuts_link(res)}
             tmp = {
                 'title': res['_id'],
@@ -174,20 +191,89 @@ class LocationSearch:
 
 
 class ESClient(object):
-    def __init__(self, indexName='autcsv', conf=None):
+    def __init__(self, conf=None, indexName='autcsv', mappingName='v1', host='localhost', port=27017):
         if conf:
             host = {'host': conf['es']['host'], 'port': conf['es']['port']}
             if 'url_prefix' in conf['es']:
                 host['url_prefix'] = conf['es']['url_prefix']
 
-            self.es = Elasticsearch(hosts=[host])
+            self.es = Elasticsearch(hosts=[host], timeout=30, max_retries=10, retry_on_timeout=True)
             self.indexName = conf['es']['indexName']
+            self.mappingName=conf['es']['mapping']
         else:
-            self.es = Elasticsearch()
+            self.es = Elasticsearch(hosts=[{'host': host, 'port': port}])
             self.indexName = indexName
+            self.mappingName=mappingName
+        self.mappingConfig = mappings[self.mappingName]
+
+    def setup(self, delete=True, language='standard'):
+        if delete:
+            logging.info("ESClient, delete index")
+            self.es.indices.delete(index=self.indexName, ignore=[400, 404])
+        res = self.es.indices.create(index=self.indexName, body={'mappings': self.mappingConfig['mapping'](language)})
+
+        logging.info("ESClient, created index " + str(res))
+
+
+    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels):
+        """ This reindexes the table with id URL"""
+        download_url = None
+        if not content:
+            download_url = url
+        table, error=None, None
+        try:
+            yacp = YACParser(content=content, url=download_url, filename=fileName, sample_size=1800)
+            tables = parseDataTables(yacp, url=url)
+            if len(tables)>1:
+                raise ValueError("Currently we support only indexing of single tables per URL (input {})".format(url))
+            table=tables[0]
+
+        except Exception as e:
+            logging.error("Error " + str(e))
+            error={"errorclass": str(e.__class__),
+                   "errormessage": str(e.message) if e.message else ""}
+
+        dt = self.mappingConfig['generator'](url=url, inputTable=table, error=error, portalInfo=portalInfo)
+
+        # add dataset title description etc
+        meta_loc_ann = []
+        if datasetInfo:
+            # use metadata for annotation
+            if geotagging:
+                meta_loc_ann = geotagging.from_metadatada(datasetInfo['dataset'], fields=['dataset_name', 'publisher'], orig_country_code=portalInfo['iso'])
+                if meta_loc_ann:
+                    dt['metadata_entities'] = meta_loc_ann
+                    if store_labels:
+                        dt['metadata_labels'] = [geotagging.get_label(m) for m in meta_loc_ann]
+
+            for f in datasetInfo:
+                dt[f] = datasetInfo[f]
+
+        loc_annotation = False
+        if geotagging and 'row' in dt:
+            regions = set()
+            for l in meta_loc_ann:
+                regions |= geotagging.get_all_subregions(l, portalInfo['iso'])
+            loc_annotation = geotagging.from_dt(dt, orig_country_code=portalInfo['iso'], regions=regions, store_labels=store_labels)
+
+        dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
+        return dt
+
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False):
+        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels)
+        return self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)
+
+    def bulkIndexTables(self, tables_bulk, portalInfo, geotagging, store_labels):
+        body = u''
+        for url, content, dsFields in tables_bulk:
+            body += u'{"index":{"_type":"table", "_id": "' + url + u'"}} \n'
+            dt = self.get_index_body(url=url, content=content, fileName=None, portalInfo=portalInfo, datasetInfo=dsFields, geotagging=geotagging, store_labels=store_labels)
+            body += json.dumps(dt) + u' \n'
+        return self.es.bulk(index=self.indexName, doc_type="table", body=body)
+
 
     def get(self, url, columns=True, rows=True):
-        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations', 'dataset.*']
+        include = ['column.header.value', 'row.*', 'no_columns', 'no_rows', 'portal.uri', 'portal.id', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
         exclude = []
         if columns:
             include.append("column.*")
@@ -197,27 +283,121 @@ class ESClient(object):
                           _source_include=include)
         return res
 
-    def get_triples(self, url, location_search):
-        include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'locations',
-                   'dataset.*']
-        exclude = ['row.*']
-        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude,
-                          _source_include=include)
 
-        # convert column to RDF
-        g = rdflib.Graph()
-        if 'column' in res['_source']:
-            for i, c in enumerate(res['_source']['column']):
-                if 'entities' in c:
-                    if 'header' in c and c['header'][0]['exact'][0]:
-                        h = c['header'][0]['exact'][0].replace(' ', '_')
+    def get_all(self, limit, scroll_id, filter=None):
+        if scroll_id:
+            res = self.es.scroll(scroll_id=scroll_id, scroll='1m')
+        else:
+            doc = {
+                'size': limit,
+                '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities',
+                            'data_entities', 'metadata_temp_start', 'metadata_temp_end', 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
+            }
+            if filter == 'geolocation':
+                doc['query'] = {
+                    "bool": {
+                        "should": [
+                            {
+                                "nested": {"path": "column", "query": {"exists": {"field": "column.entities" } } }
+                            }, {
+                                "exists": {"field": "metadata_entities"}
+                            }
+                        ]
+                    }
+                }
+            elif filter == 'temporal':
+                doc['query'] = {
+                    "bool": {
+                        "should": [
+                            {"exists": {"field": "metadata_temp_start"} },
+                            {"exists": {"field": "data_temp_start"} }
+                        ]
+                    }
+                }
+            else:
+                doc['query'] = {
+                    'match_all': {}
+                }
+
+            res = self.es.search(index=self.indexName, doc_type='table', body=doc, scroll='1m')
+        if '_shards' in res:
+            del res['_shards']
+        return res
+
+
+    def _get_labelled_rows(self, in_rows, locationsearch):
+        rows = []
+        for row in in_rows:
+            r = []
+            row_v = row['values']['value']
+            if 'entities' in row:
+                row_e = [ ]
+                for e in row['entities']:
+                    if not e:
+                        row_e.append('')
                     else:
-                        h = 'col' + str(i)
-                    h_prop = rdflib.URIRef(url + '#' + h)
-                    for e, v in zip(c['entities'], c['values']['exact']):
-                        if e:
-                            entity = location_search.format_entities(e)
-                            g.add((rdflib.URIRef(entity), h_prop, rdflib.Literal(v)))
+                        if e.startswith('http://sws.geonames.org/'):
+                            geo_id = locationsearch.get(e)
+                            name = geo_id.get('name', '')
+                            parent = locationsearch.get(geo_id['parent'])['name'] if 'parent' in geo_id else ''
+                            country = locationsearch.get(geo_id['country'])['name'] if 'country' in geo_id else ''
+                        else:
+                            osm_id = locationsearch.get_osm(e)
+                            name = osm_id.get('name', '')
+                            parent = ''
+                            country = ''
+                            if 'geonames_ids' in osm_id and len(osm_id['geonames_ids']) > 0:
+                                p_e = locationsearch.get(get_geonames_url(osm_id['geonames_ids'][0]))
+                                parent = p_e['name']
+                                country = locationsearch.get(p_e['country'])['name'] if 'country' in p_e else ''
+                        form_e = locationsearch.format_entities(e)
+                        row_e.append(' '.join([name,parent,country,form_e]).encode('utf-8'))
+            else:
+                row_e = ['' for _ in range(len(row_v))]
+            for v, e in zip(row_v, row_e):
+                r.append(v.encode('utf-8'))
+                r.append(e)
+            rows.append(r)
+        return rows
+
+    def getRandomRows(self, url, sample_size, locationsearch):
+        res = self.get(url, columns=False)
+        d = []
+        header = _get_doc_headers(res, False)
+        if header:
+            r = []
+            for h in header:
+                r.append(h.encode('utf-8'))
+                r.append('')
+            d.append(r)
+        in_rows = res['_source'].get('row', [])
+
+        if len(in_rows) >= sample_size:
+            rows = random.sample(in_rows, sample_size)
+        else:
+            rows = in_rows
+        rows = self._get_labelled_rows(rows, locationsearch)
+        return d + rows
+
+
+    def get_portal(self, portal_id, location_search):
+        g = rdflib.Graph()
+        for u in self.get_urls(portal=portal_id):
+            self._get_triples(g, u, location_search)
+        return g.serialize(format='nt')
+
+
+    def _get_triples(self, graph, url, location_search):
+        #include = ['column.header.value', 'column.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities', 'dataset.*']
+        exclude = ['row.*']
+        res = self.es.get(index=self.indexName, doc_type='table', id=url, _source_exclude=exclude)
+        # convert column to RDF
+        export_rdf.addMetadata(res['_source'], graph, location_search)
+
+    def get_triples(self, url, location_search):
+        g = rdflib.Graph()
+        self._get_triples(g, url, location_search)
+        # add data portal
         return g.serialize(format='nt')
 
     def get_urls(self, portal=None, columnlabels='none'):
@@ -276,7 +456,7 @@ class ESClient(object):
 
         limit = 100
         scroll = "5m"
-        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll=scroll, timeout='30s')
+        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll=scroll)
 
         while True:
             if '_scroll_id' in res:
@@ -291,6 +471,45 @@ class ESClient(object):
 
             for l in urls:
                 yield l['_id']
+
+    def getRandomURLs(self, portal, no_urls, columnlabels):
+        if portal:
+            p = {"nested": {"path": "portal", "query": {"term": {"portal.id": portal}}}}
+        else:
+            p = {"match_all": {}}
+
+        q = {
+            "_source": "_id",
+            "query": {
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "must": [
+                                p, {
+                                    "nested": {
+                                        "path": "column",
+                                        "query": {
+                                            "exists": {
+                                                "field": "column.entities" if columnlabels else "column.values"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "functions": [{
+                        "random_score": {
+                            "seed": "1440616293078"
+                        }
+                    }]
+                }
+            }
+        }
+        res = self.es.search(index=self.indexName, doc_type='table', body=q, size=no_urls)
+        urls = [u['_id'] for u in res['hits']['hits']]
+        return urls
+
 
     def exists(self, url):
         res = self.es.exists(index=self.indexName, doc_type='table', id=url)
@@ -317,31 +536,53 @@ class ESClient(object):
         }
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntitiesAndText(self, entities, term, locations=None, limit=10, offset=0, intersect=False,
+    def searchEntitiesAndText(self, entities, term, limit=10, offset=0, intersect=True,
                               temporal_constraints=None):
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "metadata_entities', 'data_entities", "metadata_temp_start",
+                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     tmp: [
                         {
-                            "nested": {
-                                "path": "row",
-                                "query": {
-                                    "constant_score": {
-                                        "filter": {
-                                            "terms": {
-                                                "row.entities": entities
+                            "bool": {
+                                "should": [
+                                    {
+                                        "nested": {
+                                            "path": "row",
+                                            "query": {
+                                                "constant_score": {
+                                                    "filter": {
+                                                        "terms": {
+                                                            "row.entities": entities
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "inner_hits": {},
+                                            "boost": 2
+                                        }
+                                    }, {
+                                        "constant_score": {
+                                            "filter": {
+                                                "terms": {
+                                                    "metadata_entities": entities
+                                                }
+                                            }
+                                        }
+                                    }, {
+                                        "constant_score": {
+                                            "filter": {
+                                                "terms": {
+                                                    "data_entities": entities
+                                                }
                                             }
                                         }
                                     }
-                                },
-                                "inner_hits": {},
-                                "boost": 2
+                                ]
                             }
                         },
                         {
@@ -367,26 +608,16 @@ class ESClient(object):
                 q['query']['bool']['must'] += temporal_constraints
             else:
                 q['query']['bool']['must'] = temporal_constraints
-        if locations:
-            q['query']['bool'][tmp].append({
-                "constant_score": {
-                    "filter": {
-                        "terms": {
-                            "locations": entities
-                        }
-                    }
-                }
-            })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
 
-    def searchEntities(self, entities, locations=None, limit=10, offset=0, intersect=False, temporal_constraints=None):
+            print q
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+
+    def searchEntities(self, entities, limit=10, offset=0, intersect=False, temporal_constraints=None, count=False):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
             tmp = 'must'
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
             "query": {
                 "bool": {
                     tmp: [
@@ -405,32 +636,47 @@ class ESClient(object):
                                 "inner_hits": {},
                                 "boost": 2
                             }
+                        }, {
+                            "constant_score": {
+                                "filter": {
+                                    "terms": {
+                                        "metadata_entities": entities
+                                    }
+                                }
+                            }
+                        }, {
+                            "constant_score": {
+                                "filter": {
+                                    "terms": {
+                                        "data_entities": entities
+                                    }
+                                }
+                            }
                         }
                     ]
                 }
             }
         }
+        if not count:
+            q["_source"] = ["url", "column.header.value", "portal.*", "dataset.*",
+                            'metadata_entities', 'data_entities', "metadata_temp_start",
+                            "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
+
         if temporal_constraints:
             if tmp == 'must':
                 q['query']['bool']['must'] += temporal_constraints
             else:
                 q['query']['bool']['must'] = temporal_constraints
-        if locations:
-            q['query']['bool'][tmp].append({
-                "constant_score": {
-                    "filter": {
-                        "terms": {
-                            "locations": entities
-                        }
-                    }
-                }
-            })
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, timeout='30s')
+
+        if count:
+            return self.es.count(index=self.indexName, doc_type='table', body=q)
+        else:
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
     def searchText(self, term, limit=10, offset=0, temporal_constraints=None):
         q = {
-            "_source": ["url", "column.header.value", "portal.*", "dataset.*", "locations", "temporal_start",
-                        "temporal_end"],
+            "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
+                        "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
             "query": {
                 "bool": {
                     "should": [
@@ -495,27 +741,84 @@ class ESClient(object):
         }
         return self.es.update(index=self.indexName, doc_type='table', id=id, body=q)
 
-    def get_temporal_constraints(self, start, end):
-        q = None
-        if start or end:
-            q = []
-            if start:
-                q.append({
-                    "range": {
-                        "temporal_start": {
-                            "gte": start,
-                        }
+    def get_temporal_constraints(self, metadata_start, metadata_end, start, end, pattern):
+        q = []
+        if start:
+            q.append({
+                "range": {
+                    "data_temp_start": {
+                        "gte": start,
                     }
-                })
-            if end:
-                q.append({
-                    "range": {
-                        "temporal_end": {
-                            "lt": end
-                        }
+                }
+            })
+        if end:
+            q.append({
+                "range": {
+                    "data_temp_end": {
+                        "lt": end
                     }
-                })
+                }
+            })
+        if metadata_start:
+            q.append({
+                "range": {
+                    "metadata_temp_start": {
+                        "gte": metadata_start,
+                    }
+                }
+            })
+        if metadata_end:
+            q.append({
+                "range": {
+                    "metadata_temp_end": {
+                        "lt": metadata_end
+                    }
+                }
+            })
+        if pattern:
+            q.append({
+                "term": {
+                    "data_temp_pattern": pattern
+                }
+            })
         return q
+
+
+    def searchGeoNames(self, text, limit=10, offset=0):
+        q = {
+            "query": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["name", "alternateName"],
+                    "type": "phrase_prefix",
+                    "max_expansions" : 10
+                }
+            },
+            "sort": [
+                {"datasets": {"order": "desc"}}
+            ]
+        }
+        return self.es.search(index='geonames', doc_type='geonames', body=q, size=limit, from_=offset)
+
+
+def formatGeoNamesResults(results):
+    res = []
+    for doc in results['hits']['hits']:
+        gn = doc['_source']
+        tmp = {
+            'title': gn['name'],
+            'geoid': 'gn:' + get_geonames_id(gn['url']),
+        }
+        #altNames = ', '.join(gn.get('alternateName', [])[:5])
+        #tmp['description'] = altNames
+        tmp['price'] = gn.get('datasets', '')
+        if 'countryName' in gn:
+            tmp['description'] = gn['countryName']
+
+        if 'parentFeatureName' in gn:
+            tmp['title'] += ' (' + gn['parentFeatureName'] + ')'
+        res.append(tmp)
+    return res
 
 
 MAX_STRING_LENGTH = 20
@@ -545,7 +848,7 @@ def format_results(results, row_cutoff, dataset=False):
             d_link = d["portal"]["dataset_link"]
             datasets[d_link].append()
 
-        for f in ['dataset', 'locations', 'temporal_start', 'temporal_end']:
+        for f in ['dataset', 'locations', 'metadata_temp_start', 'metadata_temp_end']:
             if f in doc['_source']:
                 d[f] = doc['_source'][f]
 
@@ -566,8 +869,8 @@ def format_table(doc, row_cutoff, locationsearch, max_rows=500):
     d['headers'] = _get_doc_headers(doc, row_cutoff)
 
     d['locations'] = []
-    if 'locations' in doc['_source']:
-        for l in doc['_source']['locations']:
+    if 'metadata_entities' in doc['_source']:
+        for l in doc['_source']['metadata_entities']:
             geo_l = locationsearch.get(l)
             if geo_l:
                 d['locations'].append({'name': geo_l['name'], 'uri': l})

@@ -3,8 +3,9 @@ from urlparse import urlparse
 
 import jinja2
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, jsonify
-from geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
+
 from openstreetmap.osm_inserter import get_geonames_url
+from services.geo_tagger import POSTAL_PATTERN, NUTS_PATTERN
 from ui import search_apis
 from ui.utils import mongo_collections_utils
 
@@ -54,8 +55,8 @@ def decode_utf8(string):
 def index():
     locationsearch = current_app.config['LOCATION_SEARCH']
     search_api = url_for('.search')
-    data = {'randomEntities': []}
-    e = locationsearch.get('http://sws.geonames.org/3220837/')
+    data = {'randomEntities': [], "twentythree": current_app.config.get("23TOKEN")}
+    e = locationsearch.get('http://sws.geonames.org/2643741/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
@@ -67,13 +68,13 @@ def index():
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
     data['randomEntities'].append(
         {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
-    e = locationsearch.get('http://sws.geonames.org/2769848/')
+    e = locationsearch.get('http://sws.geonames.org/3038032/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
     data['randomEntities'].append(
         {'name': e['name'], 'parents': [{'name': country['name'], 'link': clink}], 'link': link})
-    e = locationsearch.get('http://sws.geonames.org/2842567/')
+    e = locationsearch.get('http://sws.geonames.org/2772614/')
     country = locationsearch.get(e['country'])
     link = search_api + '?' + urllib.urlencode({'l': e['_id']})
     clink = search_api + '?' + urllib.urlencode({'l': country['_id']})
@@ -128,15 +129,23 @@ def geonamesapi():
 
 @ui.route('/searchapi', methods=['GET'])
 def searchapi():
+    resp = search_kg()
+    return jsonify(resp)
+
+
+def search_kg(limit=10):
     q = request.args.get("q")
     if not q:
-        resp = jsonify({'error': 'no keyword supplied. Use argument q'})
+        resp = {'error': 'no keyword supplied. Use argument q'}
         # resp.status_code = 404
         return resp
 
     locationsearch = current_app.config['LOCATION_SEARCH']
+    es_search = current_app.config['ELASTICSEARCH']
     search_api = url_for('.search')
-    results = locationsearch.get_by_substring(q, search_api)
+
+    geonames_res = es_search.searchGeoNames(q, limit=limit)
+    results = search_apis.formatGeoNamesResults(geonames_res)
     resp = {
       "results": {
         "locations": {
@@ -146,36 +155,35 @@ def searchapi():
       }
     }
 
-    results = locationsearch.get_osm_names_by_substring(q, search_api)
+    results = locationsearch.get_osm_names_by_substring(q, search_api, limit=limit)
     resp["results"]["postalcodes"] = {
       "name": "Streets",
       "results": results
     }
 
     if POSTAL_PATTERN.match(q):
-        postalcodes = locationsearch.get_postalcodes(q, search_api)
+        postalcodes = locationsearch.get_postalcodes(q, search_api, limit=limit)
         resp["results"]["postalcodes"] = {
             "name": "Postal codes",
             "results": postalcodes
         }
 
     if NUTS_PATTERN.match(q):
-        nuts = locationsearch.get_nuts(q, search_api)
+        nuts = locationsearch.get_nuts(q, search_api, limit=limit)
         resp["results"]["nutscodes"] = {
             "name": "NUTS codes",
             "results": nuts
         }
 
-    resp = jsonify(resp)
     return resp
 
 
-def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
-    ls = request.args.getlist("l")
-    p = request.args.get("p")
-    q = request.args.get("q")
+def get_search_results(ls, q, p, row_cutoff, limit=10, offset=0):
     temp_start = request.args.get("start")
     temp_end = request.args.get("end")
+    temp_mstart = request.args.get("mstart")
+    temp_mend = request.args.get("mend")
+    pattern = request.args.get("pattern")
     limit = request.args.get("limit", limit)
     offset = request.args.get("offset", offset)
     dataset = bool(request.args.get("dataset", False))
@@ -184,13 +192,15 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
     es_search = current_app.config['ELASTICSEARCH']
     locationsearch = current_app.config['LOCATION_SEARCH']
 
-    temporal_constraints = es_search.get_temporal_constraints(temp_start, temp_end)
+    temporal_constraints = es_search.get_temporal_constraints(temp_mstart, temp_mend, temp_start, temp_end, pattern)
 
     if ls:
+        ls = [get_geonames_url(l[3:]) if l.startswith('gn:') else l for l in ls]
+
         if q:
-            res = es_search.searchEntitiesAndText(ls, q, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntitiesAndText(entities=ls, term=q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         else:
-            res = es_search.searchEntities(ls, aggregated_locations, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntities(entities=ls, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']
@@ -202,9 +212,6 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
             if 'geonames' in l:
                 # entity information
                 name = locationsearch.get(l)['name']
-                data['keyword'] = name
-                if len(ls) > 1:
-                    data['keyword'] = ''
 
                 entity['name'] = name
                 entity['external'] = locationsearch.get_external_links(l)
@@ -221,9 +228,6 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
                     geon = osm_entry['geonames_ids'][0]
                     geon = get_geonames_url(geon)
                 name = osm_entry['name']
-                data['keyword'] = name
-                if len(ls) > 1:
-                    data['keyword'] = ''
 
                 entity['name'] = name
                 parents = []
@@ -238,7 +242,6 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
                     entity['parents'] = parents[LEADING_PARENTS:]
             else:
                 nuts_e = locationsearch.get_nuts_by_geovocab(l)
-                data['keyword'] = nuts_e['name']
                 entity['name'] = nuts_e['name']
                 parents = []
                 search_api = url_for('.search')
@@ -255,19 +258,17 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
         country_code, code = p.split('#')
         country = locationsearch.get_country(country_code)
         entities = locationsearch.get_postalcode_mappings_by_country(code, country)
-        res = es_search.searchEntities(entities, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+        res = es_search.searchEntities(entities=entities, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += res['hits']['total']
         data['results'] += search_apis.format_results(res, row_cutoff)
         # entity information
         search_api = url_for('.search')
         link = search_api + '?' + urllib.urlencode({'q': country['name'].encode('utf-8'), 'l': country['_id']})
         data['entities'].append({'name': code, 'parents': [{'name': country['name'], 'link': country['_id'], 'search': link}]})
-        data['keyword'] = code
     elif q:
         text_res = es_search.searchText(q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
         data['total'] += text_res['hits']['total']
         data['results'] += search_apis.format_results(text_res, row_cutoff)
-        data['keyword'] = q
 
     # format entities -> convert to links
     for res in data['results']:
@@ -281,16 +282,32 @@ def get_search_results(row_cutoff, aggregated_locations, limit=10, offset=0):
 def search():
     limit = 10
     page = try_page(request.form.get("page", 1))
-    data = get_search_results(row_cutoff=True, aggregated_locations=True, limit=limit, offset=10 * (page-1))
+
+    ls = request.args.getlist("l")
+    p = request.args.get("p")
+    q = request.args.get("q")
+
+    data = get_search_results(ls, q, p, row_cutoff=True, limit=limit, offset=10 * (page-1))
 
     data['currentPage'] = page
     data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, data['total'], limit))]
+    data["twentythree"] = current_app.config.get("23TOKEN")
     return render('index.jinja', data)
+
+@ui.route('/kgsearch', methods=['GET', 'POST'])
+def kgsearch():
+    data = search_kg(-1)
+
+    return render('kgsearch.jinja', data)
+
 
 
 @ui.route('/locationsearch', methods=['GET'])
 def locationsearch():
-    data = get_search_results(row_cutoff=False, aggregated_locations=True)
+    ls = request.args.getlist("l")
+    p = request.args.get("p")
+    q = request.args.get("q")
+    data = get_search_results(ls, q, p, row_cutoff=False)
     return jsonify(data)
 
 
@@ -307,6 +324,9 @@ def preview():
 def semantics():
     return render("semantics.jinja")
 
+@ui.route('/sparql', methods=['GET'])
+def sparql():
+    return render("sparql.jinja")
 
 @ui.route('/semantics/<path:url>', methods=['GET'])
 def semantics_view(url):
