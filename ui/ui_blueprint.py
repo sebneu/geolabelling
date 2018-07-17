@@ -178,12 +178,13 @@ def search_kg(limit=10):
     return resp
 
 
-def get_search_results(ls, q, p, row_cutoff, limit=10, offset=0):
+def get_search_results(ls, q, p, row_cutoff, features=None, limit=10, offset=0):
     temp_start = request.args.get("start")
     temp_end = request.args.get("end")
     temp_mstart = request.args.get("mstart")
     temp_mend = request.args.get("mend")
     pattern = request.args.get("pattern")
+    features = request.args.get("features", features)
     limit = request.args.get("limit", limit)
     offset = request.args.get("offset", offset)
     dataset = bool(request.args.get("dataset", False))
@@ -198,9 +199,9 @@ def get_search_results(ls, q, p, row_cutoff, limit=10, offset=0):
         ls = [get_geonames_url(l[3:]) if l.startswith('gn:') else l for l in ls]
 
         if q:
-            res = es_search.searchEntitiesAndText(entities=ls, term=q, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntitiesAndText(entities=ls, term=q, limit=limit, offset=offset, features=features, temporal_constraints=temporal_constraints)
         else:
-            res = es_search.searchEntities(entities=ls, limit=limit, offset=offset, temporal_constraints=temporal_constraints)
+            res = es_search.searchEntities(entities=ls, limit=limit, offset=offset, features=features, temporal_constraints=temporal_constraints)
 
         # data['pages'] = [page_i + 1 for page_i, i in enumerate(range(1, res['hits']['total'], limit))]
         data['total'] += res['hits']['total']

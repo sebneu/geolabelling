@@ -627,8 +627,10 @@ class ESClient(object):
                 }
             }
         }
-        constraints = temporal_constraints + feature_conditions(features)
-        if len(constrains) > 0:
+        if not temporal_constraints:
+		temporal_constraints = []
+	constraints = temporal_constraints + self._feature_conditions(features)
+        if len(constraints) > 0:
             if not q['query']['bool']['must']:
                 q['query'] = self._must(q['query'] + constraints)
             else: 
@@ -686,8 +688,11 @@ class ESClient(object):
                             'metadata_entities', 'data_entities', "metadata_temp_start",
                             "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
 
+        if not temporal_constraints:
+		temporal_constraints = []
+
         constraints = temporal_constraints + self._feature_conditions(features)
-        if len(constrains) > 0:
+        if len(constraints) > 0:
             if not q['query']['bool']['must']:
                 q['query'] = self._must(q['query'] + constraints)
             else: 
@@ -756,8 +761,11 @@ class ESClient(object):
             }
         }
 
+        if not temporal_constraints:
+		temporal_constraints = []
+
         constraints = temporal_constraints + self._feature_conditions(features)
-        if len(constrains) > 0:
+        if len(constraints) > 0:
             if not q['query']['bool']['must']:
                 q['query'] = self._must(q['query'] + constraints)
             else: 
