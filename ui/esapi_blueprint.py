@@ -1,8 +1,7 @@
-import urllib
-from urlparse import urlparse
 
 from flask import Blueprint, current_app, request, redirect, url_for, jsonify, json
 from flask_cors import CORS
+from openstreetmap.osm_inserter import get_geonames_url
 import pprint
 
 esapi = Blueprint('esapi', __name__ )
@@ -15,7 +14,7 @@ def location_msearch():
     ls = request.args.getlist("l")
     p = request.args.get("p")
     q = request.args.get("q")
-
+   
     res = {'responses':[]}
 
     if request.method == 'POST':
@@ -56,8 +55,9 @@ def location_msearch():
 	print("POST request: l is {}, q is {}\n".format(ls, q))
 
     es_search = current_app.config['ELASTICSEARCH']
-    #locationsearch = current_app.config['LOCATION_SEARCH']
-    if ls and not q: 
+    ls = [get_geonames_url(l[3:]) if l.startswith('gn:') else l for l in ls]
+
+    if ls and not q:
 	res = es_search.searchEntities(entities=ls, limit=limit, offset=offset)
     elif q and not ls:
 	res = es_search.searchText(term=q, limit=limit, offset=offset)
