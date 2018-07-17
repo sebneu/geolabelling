@@ -3,6 +3,7 @@
 cchardet
 flask
 flask_restplus
+flask_cors
 rdflib
 sparql-client
 sparqlwrapper
