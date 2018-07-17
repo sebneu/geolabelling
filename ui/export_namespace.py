@@ -1,6 +1,6 @@
 
 from flask import current_app, jsonify, request, Response
-from flask_restplus import Resource, inputs, Api
+from flask_restplus import Resource
 from ui.rest_api import api
 import csv
 import StringIO
@@ -134,6 +134,32 @@ class GetCSV(Resource):
             res['next'] = request.base_url + "?" + urllib.urlencode({'scroll_id': scrollId})
         return res
 
+@get_ns.expect(datasets_parser)
+@get_ns.route('/datasets')
+@get_ns.doc(description="Get an indexed CSV by its URL")
+class GetCSV(Resource):
+    def get(self):
+        limit = request.args.get('limit')
+        scroll_id = request.args.get('scroll_id')
+        filter = request.args.get('filter')
+        es_search = current_app.config['ELASTICSEARCH']
+        res = es_search.get_all(limit, scroll_id, filter=filter)
+        if '_scroll_id' in res:
+            scrollId = res['_scroll_id']
+            res['next'] = request.base_url + "?" + urllib.urlencode({'scroll_id': scrollId})
+        return res
+
+
+
+@rdf_ns.route('/portal')
+@rdf_ns.doc(params={'portal': "The data portal ID"}, description="Returns the geo-entities of an indexed data portal as RDF")
+class GetPortalRDF(Resource):
+    def get(self):
+        portal = request.args.get("portal")
+        es_search = current_app.config['ELASTICSEARCH']
+        location_search = current_app.config['LOCATION_SEARCH']
+        nt_file = es_search.get_portal(portal, location_search)
+        return Response(nt_file, mimetype='text/plain')
 
 
 @rdf_ns.route('/portal')

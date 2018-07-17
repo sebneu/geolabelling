@@ -2,7 +2,47 @@
 Geo-semantic labelling of Open Data
 
 
-## Usage
+## Setup
+
+* `$ git clone git@github.com:sebneu/geolabelling.git`
+* `$ cd geolabelling`
+* (optionally) setup virtual environment
+* `$ virtualenv --system-site-packages geolabelling_env`
+* `$ . geolabelling_env/bin/activate`
+* Install requirements 
+* `$ python setup.py install`
+
+### GeoNames RDF dump
+Download the [GeoNames RDF dump](http://download.geonames.org/all-geonames-rdf.zip) and extract it to the "local" folder.
+
+### MongoDB setup
+The GeoNames entities, labels, and additional/external links are all stored in a [MongoDB instance](https://www.mongodb.com/). All commands provide --host and --port parameters to access the MongoDB
+
+### GeoNames data
+
+1. Store all GeoNames entities and their parent relations in collection db.geonames: 
+```
+$ python geonames_graph.py --host localhost --port 27017 geonames
+```
+2. Build an index for all labels (and alternative labels) in collection db.keywords:
+```
+$ python geonames_graph.py --host localhost --port 27017 keywords
+```
+3. Store country information in db.countries
+```
+$ python geonames_graph.py --host localhost --port 27017 countries
+```
+
+### Wikidata
+
+- Get postal codes from wikidata and store in collection db.postalcodes
+```
+$ python geonames_graph.py --host localhost --port 27017 wikidata-postalcodes
+```
+- Get NUTS from wikidata and store in collection db.nuts
+```
+$ python geonames_graph.py --host localhost --port 27017 wikidata-nuts
+```
 
 ### OSM data
 

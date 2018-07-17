@@ -311,13 +311,25 @@ def locationsearch():
     return jsonify(data)
 
 
-@ui.route('/preview', methods=['GET'])
-def preview():
-    url = request.args.get("tableid")
+def get_preview_table(url):
     es_search = current_app.config['ELASTICSEARCH']
     doc = es_search.get(url, columns=False)
     res = search_apis.format_table(doc=doc, locationsearch=current_app.config['LOCATION_SEARCH'], row_cutoff=False)
-    return jsonify({'data': render_template('preview_table.jinja', table=res), 'url': res['url'], 'portal': res['portal']})
+    return res
+
+
+@ui.route('/preview', methods=['GET'])
+def preview():
+    url = request.args.get("tableid")
+    res = get_preview_table(url)
+    html = render_template('preview_table.jinja', table=res)
+    return jsonify({'data': html, 'url': res['url'], 'portal': res['portal']})
+
+
+@ui.route('/render/<path:url>')
+def render(url):
+    res = get_preview_table(url)
+    return render_template('render_table.jinja', table=res, data={'locations': res['locations'], 'url': res['url'], 'title': res['title'], 'portal': res['portal'], 'publisher': res['publisher']})
 
 
 @ui.route('/semantics', methods=['GET'])
