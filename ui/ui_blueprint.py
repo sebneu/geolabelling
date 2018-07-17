@@ -327,7 +327,7 @@ def preview():
 
 
 @ui.route('/render/<path:url>')
-def render(url):
+def render_table(url):
     res = get_preview_table(url)
     return render_template('render_table.jinja', table=res, data={'locations': res['locations'], 'url': res['url'], 'title': res['title'], 'portal': res['portal'], 'publisher': res['publisher']})
 
