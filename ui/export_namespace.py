@@ -117,6 +117,7 @@ class GetCSV(Resource):
 datasets_parser = api.parser()
 datasets_parser.add_argument('limit', type=int, required=False, default=1000)
 datasets_parser.add_argument('scroll_id', required=False)
+datasets_parser.add_argument('filter', choices=['temporal', 'geolocation'], required=False)
 
 @get_ns.expect(datasets_parser)
 @get_ns.route('/datasets')
@@ -125,8 +126,9 @@ class GetCSV(Resource):
     def get(self):
         limit = request.args.get('limit')
         scroll_id = request.args.get('scroll_id')
+        filter = request.args.get('filter')
         es_search = current_app.config['ELASTICSEARCH']
-        res = es_search.get_all(limit, scroll_id)
+        res = es_search.get_all(limit, scroll_id, filter=filter)
         if '_scroll_id' in res:
             scrollId = res['_scroll_id']
             res['next'] = request.base_url + "?" + urllib.urlencode({'scroll_id': scrollId})

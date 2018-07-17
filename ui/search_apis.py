@@ -284,17 +284,41 @@ class ESClient(object):
         return res
 
 
-    def get_all(self, limit, scroll_id):
-        doc = {
-            'size': limit,
-            '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities', 'data_entities'],
-            'query': {
-                'match_all': {}
-            }
-        }
+    def get_all(self, limit, scroll_id, filter=None):
         if scroll_id:
             res = self.es.scroll(scroll_id=scroll_id, scroll='1m')
         else:
+            doc = {
+                'size': limit,
+                '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities',
+                            'data_entities', 'metadata_temp_start', 'metadata_temp_end', 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
+            }
+            if filter == 'geolocation':
+                doc['query'] = {
+                    "bool": {
+                        "should": [
+                            {
+                                "nested": {"path": "column", "query": {"exists": {"field": "column.entities" } } }
+                            }, {
+                                "exists": {"field": "metadata_entities"}
+                            }
+                        ]
+                    }
+                }
+            elif filter == 'temporal':
+                doc['query'] = {
+                    "bool": {
+                        "should": [
+                            {"exists": {"field": "metadata_temp_start"} },
+                            {"exists": {"field": "data_temp_start"} }
+                        ]
+                    }
+                }
+            else:
+                doc['query'] = {
+                    'match_all': {}
+                }
+
             res = self.es.search(index=self.indexName, doc_type='table', body=doc, scroll='1m')
         if '_shards' in res:
             del res['_shards']
