@@ -1,13 +1,12 @@
 
-from flask import current_app, jsonify, request, Response, render_template
-from flask_restplus import Resource, inputs, Api
+from flask import current_app, jsonify, request, Response
+from flask_restplus import Resource
 from ui.rest_api import api
 import csv
 import StringIO
 import sparql
 import urllib
 
-from ui.ui_blueprint import get_preview_table
 
 get_ns = api.namespace('get', description='Operations to get the datasets')
 rdf_ns = api.namespace('rdf', description='Operations to convert the data to RDF')
