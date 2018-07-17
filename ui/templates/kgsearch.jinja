@@ -1,0 +1,95 @@
+{% extends "base_layout.jinja" %}
+
+{% set active_page = "kgsearch" -%}
+
+{% block content %}
+<div class="ui container">
+    <h2 class="ui divider horizontal header">Search Geo-entity Knowledge Graph</h2>
+
+
+    <div class="ui segment">
+
+        <div class="ui top sticky text vertical segment">
+            <div class="ui fluid category search">
+                <div class="ui fluid icon input">
+                    <input class="prompt" type="text" placeholder="Search..." id="keyword" value="{% if "keyword" in data %}{{data.keyword}}{% else %}{% endif %}">
+                    <i class="search icon"></i>
+                </div>
+            </div>
+        </div>
+
+        {% for d in data.results %}
+            {% if data.results[d].results|length > 0 %}
+            <div class="ui relaxed divided list" id="results">
+                <div class="item">
+                    <h3 class="header">{{data.results[d].name}}</h3>
+                </div>
+                {% for r in data.results[d].results %}
+                <div class="item">
+                  <div class="ui grid">
+                    <div class="one wide column">
+                      <div class="ui list">
+                          <div class="item">
+                            <button class="circular ui icon button preview">
+                                <a href="{{r.url}}"><i class="search icon"></i></a>
+                            </button>
+                          </div>
+                      </div>
+                    </div>
+                    <div class="fifteen wide column">
+                         <div class="one wide column">
+                              <div class="content">
+                                <div class="ui grid">
+                                  <div class="twelve wide column">
+                                    <div class="header">{{r.title}}</div>
+                                    <div class="description">{{r.description}}</div>
+                                  </div>
+                                  <div class="right aligned four wide column">
+                                    <div class="header">{{r.price}}</div>
+                                  </div>
+                                </div>
+                              </div>
+                         </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+
+    $("#pagination").on('click', '.pagination, .item', function(){
+            var page = $.trim(decodeURIComponent($(this).text()).replace(/[\t\n]+/g,' '))
+            $.ajax({
+                url: window.location.href,
+                data: {"page": page},
+                type: 'POST',
+                success: function(response) {
+                    $("body").html(response);
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+    });
+
+
+
+    $("#keyword").keyup(function(event){
+        if(event.keyCode == 13){
+           var input = document.getElementById("keyword").value;
+           a = "{{ url_for('ui.kgsearch')}}"
+           if(input.length > 0){
+           a+="?q="+input
+               window.location.href=a
+           }
+        }
+    });
+
+{% endblock %}

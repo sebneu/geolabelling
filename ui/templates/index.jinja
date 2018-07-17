@@ -8,24 +8,98 @@
 
     <p style="margin-bottom: 0.3cm"/>
 
-<!--
-    <div class="ui disabled segment" id="dateFilter">
+    <div class="ui styled fluid accordion" id="dateFilter">
+      <div class="title">
+        <i class="dropdown icon"></i>
+        Temporal filters
+      </div>
+      <div class="content">
         <div class="ui grid">
             <div class="twelve wide column">
-                <div class="ui slider checkbox" id="dateFilterSlider">
-                  <input type="checkbox" name="dateFilterSlider">
-                  <label>Filter results by time span</label>
+                <div class="row">
+                    <div class="ui form">
+                        <div class="inline fields">
+                            <label>Filter results by timespan:</label>
+                            <div class="field">
+                              <div class="ui radio checkbox timespan_off">
+                                <input type="radio" name="timespan" checked="checked">
+                                <label>Off</label>
+                              </div>
+                            </div>
+                            <div class="field">
+                              <div class="ui radio checkbox timespan_metadata">
+                                <input type="radio" name="timespan">
+                                <label>Title & description</label>
+                              </div>
+                            </div>
+                            <div class="field">
+                              <div class="ui radio checkbox timespan_data">
+                                <input type="radio" name="timespan">
+                                <label>CSV columns</label>
+                              </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p style="margin-bottom: 0.7cm"/>
-                <div id="slider"></div>
+                <div class="row">
+                    <p style="margin-bottom: 1cm"/>
+                </div>
+
+                <div class="ui grid">
+                    <div class="four wide column">
+                        <div class="ui fluid search selection dropdown" id="period">
+                              <div class="default text">Select Period</div>
+                        </div>
+                    </div>
+                    <div class="twelve wide column">
+                        <div id="slider"></div>
+                    </div>
+                </div>
             </div>
-            <div class="four wide right aligned bottom column">
-                <button class="ui disabled button applyFilter">Filter results</button>
+            <div class="four wide right aligned column">
+                <div class="row">
+                    <div class="ui floating labeled icon dropdown button">
+                      <i class="filter icon"></i>
+                      <span class="text">Filter pattern</span>
+                      <div class="menu">
+                        <div class="header">
+                          <i class="tags icon"></i>
+                          Filter by date pattern
+                        </div>
+                        <div class="item" data-value="varying">
+                          None
+                        </div>
+                        <div class="item" data-value="static">
+                          Static
+                        </div>
+                        <div class="item" data-value="daily">
+                          Daily
+                        </div>
+                        <div class="item" data-value="weekly">
+                          Weekly
+                        </div>
+                        <div class="item" data-value="monthly">
+                          Monthly
+                        </div>
+                        <div class="item" data-value="quarterly">
+                          Quarterly
+                        </div>
+                        <div class="item" data-value="yearly">
+                          Yearly
+                        </div>
+                      </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <p style="margin-bottom: 0.3cm"/>
+                </div>
+                <button class="ui primary button applyFilter">Apply Filter</button>
             </div>
         </div>
+      </div>
     </div>
     <p style="margin-bottom: 0.5cm"/>
--->
+
     <div class="ui segment">
         {% if "entities" in data %}
             <div class="ui left rail">
@@ -70,11 +144,26 @@
             </div>
         {% endif %}
 
-        <div class="ui top sticky text vertical segment">
-            <div class="ui fluid category search">
-                <div class="ui fluid icon input">
-                    <input class="prompt" type="text" placeholder="Search..." id="keyword" value="{% if "keyword" in data %}{{data.keyword}}{% else %}{% endif %}">
-                    <i class="search icon"></i>
+        <div class="ui top text vertical segment">
+            <div class="ui grid">
+                <div class="ten wide column">
+                    <div class="ui fluid category search" id="geosearch">
+                        <div class="ui fluid input">
+                            <input class="prompt" type="text" placeholder="Geo-location .." id="geoentity" >
+                        </div>
+                    </div>
+                </div>
+                <div class="four wide column">
+                    <div class="ui fluid search">
+                        <div class="ui fluid input">
+                            <input class="prompt" type="text" placeholder="Keyword .." id="keyword">
+                        </div>
+                    </div>
+                </div>
+                <div class="two wide column">
+                    <button class="circular ui large icon primary button startsearch" >
+                      <i class="icon search"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -116,16 +205,16 @@
                             <div class="one wide column">
                               <div class="ui list">
                                   <div class="item">
-                                    <button class="primary circular ui icon button preview">
+                                    <button class="primary circular ui icon button preview" data-tooltip="Table Preview" data-variation="small">
                                         <i class="table icon"></i>
                                     </button>
                                   </div>
-                                  <!--<div class="item">
-                                    <button class="primary circular ui icon button profile" >
-                                        <i class="bar chart icon"></i>
+                                  <div class="item">
+                                    <button class="circular ui icon button visual" style="display:none;" data-tooltip="Table Visualization" data-variation="small">
+                                        <i class="map icon"></i>
                                     </button>
                                   </div>
-                                  <div class="item">
+                                  <!--<div class="item">
                                     <button class="primary circular ui icon button" >
                                         <i class="info icon"></i>
                                     </button>
@@ -246,11 +335,39 @@
   </div>
 </div>
 </div>
+
+<div class="ui large modal" id="visual_modal">
+  <i class="close icon"></i>
+  <div class="content" id="table_visual" style="height:640px;"></div>
+      <div class="actions">
+         <div class="ui internally celled grid">
+            <div class="two wide column">
+                <div class="ui header" id="num_visuals"></div>
+            </div>
+            <div class="ten wide column">
+                <div class="ui description" id="slug_visuals"></div>
+            </div>
+            <div class="four wide column">
+                <div class="ui buttons">
+                    <button class="ui left attached icon button">
+                      <i class="left chevron icon"></i>
+                      Previous
+                    </button>
+                    <button class="ui right attached icon button">
+                      <i class="right chevron icon"></i>
+                      Next
+                    </button>
+                </div>
+            </div>
+         </div>
+      </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block script %}
 
-    $('.ui.search')
+    $('#geosearch')
       .search({
         apiSettings: {
           url: 'searchapi?q={query}'
@@ -259,7 +376,32 @@
       })
     ;
 
-    $("#results").on('click', '.preview, .button', function() {
+    $(".button.startsearch").click(function() {
+       var a = "{{ url_for('ui.search')}}" + "?";
+       var x = null;
+       var y = null;
+
+       var input = $('#geosearch').search('get value');
+       if(input.length > 0){
+           var geoentity = $('#geosearch').search('get result', input);
+           x = "l=" + geoentity['geoid'];
+       }
+
+       var keyword = document.getElementById("keyword").value;
+       if(keyword.length > 0){
+           y = "q=" + keyword;
+       }
+
+       if(x && y) {
+           window.location.href = a + x + "&" + y;
+       } else if(x) {
+           window.location.href = a + x;
+       } else if(y) {
+           window.location.href = a + y;
+       }
+    });
+
+    $("#results").on('click', '.preview', function() {
         url = $(this).closest('.ui .grid');
         var urlval = url.find('div.header').children().attr('href');
         $(table_header).text('Loading...')
@@ -270,6 +412,57 @@
         ;
     });
 
+    $("#results").on('click', '.visual', function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data( this, "twentythree" );
+        jQuery.data(modal, "twentythree", response);
+        jQuery.data(modal, "currentindex", 0);
+        loadTableVisual(response, 0);
+        $('#visual_modal')
+          .modal('show')
+        ;
+    });
+
+    function loadTableVisual(response, index) {
+        i = index+1
+        slug = response.vizzes[index].slug
+        $(num_visuals).text(i + '/' + response.found)
+        $(slug_visuals).text(slug)
+        $(table_visual).html('<iframe src="https://doh.23degrees.io/embed/'+slug+'" style="padding:5px 0!important; width:100%!important; height:100%!important; min-height:360px!important; max-height:620px!important" frameborder="0" scrolling="no" id="twentythree"></iframe>')
+    }
+
+    function visualAvailable(button) {
+        var twentythreeurl = "https://doh.23degrees.io/services/pub/api/v1/opendata/bysourceurl";
+        url = $(button).closest('.ui .grid');
+        var urlval = url.find('div.header').children().attr('href');
+        // Send the data using post
+        var posting = $.ajax
+        ({
+            crossDomain: true,
+            type: "POST",
+            url: twentythreeurl,
+            dataType: 'json',
+            async: false,
+            headers: {
+                "Content-Type" : "application/json",
+                "Authorization": "Bearer {{data.twentythree}}",
+                "Cache-Control": "no-cache"
+            },
+            data: '{ "sourceUrl" : "'+urlval+'" }',
+            success: function (response){
+                if(response.found > 0) {
+                    button.style.display = "block";
+                    jQuery.data(button, "twentythree", response);
+                } else {
+                    button.style.display = "hide";
+                }
+            }
+        });
+    }
+    $( ".visual" ).each(function( index ) {
+        visualAvailable(this);
+    });
+
     $(".button.fulltext").click(function() {
         var input = event.target.id;
         a = "{{ url_for('ui.search')}}"
@@ -277,6 +470,28 @@
            a+="?q="+input
            window.location.href=a
         }
+    });
+
+    $(".button.left").click(function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data(modal, "twentythree" );
+        index = jQuery.data(modal, "currentindex" );
+        if(index==0){
+            index=response.found-1;
+        } else {
+            index--;
+        }
+        jQuery.data(modal, "currentindex", index);
+        loadTableVisual(response, index);
+    });
+
+    $(".button.right").click(function() {
+        var modal = $('#visual_modal')[0];
+        response = jQuery.data(modal, "twentythree" );
+        index = jQuery.data(modal, "currentindex" );
+        index = (index+1)%response.found;
+        jQuery.data(modal, "currentindex", index);
+        loadTableVisual(response, index);
     });
 
     $("#pagination").on('click', '.pagination, .item', function(){
@@ -295,21 +510,23 @@
     });
 
 
-
-    $("#keyword").keyup(function(event){
-        if(event.keyCode == 13){
-           var input = document.getElementById("keyword").value;
-           a = "{{ url_for('ui.search')}}"
-           if(input.length > 0){
-           a+="?q="+input
-               window.location.href=a
-           }
-        }
-    });
+    $('.ui.dropdown')
+      .dropdown()
+    ;
 
     $('.ui.sticky')
         .sticky()
     ;
+
+    $('.ui.accordion')
+      .accordion()
+    ;
+
+    $('.ui.accordion').accordion({
+        onOpen: function() {
+            $("#slider").dateRangeSlider('resize');
+        }
+    });
 
     function loadTablePreview(tableid) {
         $.get("{{ url_for('ui.preview') }}", {
@@ -341,8 +558,8 @@
     $("#slider").dateRangeSlider(
       {
         bounds: {
-          min: new Date(2000, 0, 1),
-          max: new Date(2025, 11, 31)
+          min: new Date(1900, 0, 1),
+          max: new Date(2050, 11, 31)
         },
         defaultValues: {
           min: startD,
@@ -356,46 +573,62 @@
             year = val.getFullYear();
           return month + "/" + year;
         },
-        enabled: false
+        enabled: true
       }
     );
-
-    $("#dateFilterSlider")
-      .checkbox()
-      .first().checkbox({
-        onChecked: function() {
-          enableTimespan(true);
-        },
-        onUnchecked: function() {
-          enableTimespan(false);
-        }
-      });
 
     $(".button.applyFilter").click(function() {
         reloadWithTimespan()
     });
 
-    function enableTimespan(enable){
-        if(enable) {
-          $("#slider").dateRangeSlider('option', {enabled: true});
-          $("#dateFilter").removeClass('disabled');
-          $(".button.applyFilter").removeClass('disabled');
-        } else {
-          $("#slider").dateRangeSlider("option", {enabled: false})
-          $("#dateFilter").addClass('disabled');
-          $(".button.applyFilter").addClass('disabled');
-        }
-    }
-
     function reloadWithTimespan() {
+        var timespan_off = $('.ui.checkbox.timespan_off').checkbox('is checked');
+        var timespan_metadata = $('.ui.checkbox.timespan_metadata').checkbox('is checked');
+        var timespan_data = $('.ui.checkbox.timespan_data').checkbox('is checked');
+
         var dateValues = $("#slider").dateRangeSlider("values");
         var minD = dateValues.min.toISOString().split('T')[0]
         var maxD = dateValues.max.toISOString().split('T')[0]
-        window.location.href = $.query.set("end", maxD).set("start", minD);
+        var patternValue = $('.ui.dropdown').dropdown('get value');
+
+        var q = $.query
+        q = q.remove('mstart')
+        q = q.remove('mend')
+        q = q.remove('start')
+        q = q.remove('end')
+        q = q.remove('pattern')
+
+        if (timespan_metadata) {
+            q = q.set("mend", maxD).set("mstart", minD);
+        }
+        if (timespan_data) {
+            q = q.set("end", maxD).set("start", minD);
+        }
+
+        if (patternValue && patternValue != 'varying') {
+            q = q.set("pattern", patternValue);
+        }
+
+        if(q) {
+            window.location.href = q;
+        }
     }
 
-    if($.query.get("start") && $.query.get("start")) {
-       enableTimespan(true)
-       $("#dateFilterSlider").checkbox('set checked');
-    }
+    $("#period").dropdown({
+        apiSettings: {
+          // this url returns a list of periods
+          url: 'api/v1/temporal/periods?q={query}'
+        },
+        onChange: function(value, text, $selectedItem) {
+          $.get( "api/v1/temporal/period?id="+value, function( data ) {
+             if(data['success']) {
+                dates = data['result']
+                 startD = new Date(dates['start']);
+                 endD = new Date(dates['end']);
+                 $("#slider").dateRangeSlider("values", startD, endD);
+             }
+          });
+        }
+    });
+
 {% endblock %}

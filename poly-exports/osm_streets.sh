@@ -1,8 +1,9 @@
 BASE=$1
 LEVEL=$2
-OSMOSIS=/home/neumaier/Downloads/osmosis-latest/bin/osmosis
-OSM_FILES="${BASE}/poly-exports/osm-export/*.osm.pbf"
-
+#OSMOSIS=/home/neumaier/Downloads/osmosis-latest/bin/osmosis
+OSMOSIS=/home/csv/osmosis/osmosis-latest/bin/osmosis
+#OSM_FILES="${BASE}/poly-exports/osm-export/*.osm.pbf"
+OSM_FILES="${BASE}/poly-exports/osm-export/ireland-latest.osm.pbf"
 
 for OSM_FILE in $OSM_FILES
 do

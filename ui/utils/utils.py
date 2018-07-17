@@ -28,22 +28,7 @@ def default_conf():
     return config
 
 def load_config(confFile):
-    config = default_conf()
-    if confFile:
-        log.info("Loading user config", config=confFile)
-        with open(confFile) as f_conf:
-            conf = yaml.load(f_conf)
-            
-            for key in config:
-                if key in conf:
-                    for k, v in config[key].items():
-                        if key!='ui':
-                            if len(str(conf[key].get(k,''))) > 0:
-                                config[key][k] = conf[key].get(k,v)
-            for key in conf:
-                if key not in config:
-                    config[key]={}
-                    for k, v in conf[key].items():
-                        config[key][k] = conf[key].get(k,v)
-                    
-    return config
+    log.info("Loading user config", config=confFile)
+    with open(confFile) as f_conf:
+        conf = yaml.load(f_conf)
+    return conf

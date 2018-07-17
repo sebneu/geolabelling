@@ -5,3 +5,5 @@ Stadt
 Gemeindebezirk
 Gemeinde
 pagasts
+Comuna
+Gemeente
