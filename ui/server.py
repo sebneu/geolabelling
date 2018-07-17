@@ -11,6 +11,7 @@ from ui.export_namespace import get_ns
 from ui.export_namespace import rdf_ns
 from ui.rest_api import api
 from ui.ui_blueprint import ui
+from ui.esapi_blueprint import esapi
 from ui.utils import utils
 from utils.error_handler import ErrorHandler
 
@@ -93,6 +94,8 @@ def cli(args, es):
 
     app.register_blueprint(blueprint)
     app.register_blueprint(ui, url_prefix='/' + url_prefix)
+
+    app.register_blueprint(esapi, url_prefix='/'+url_prefix+'/esapi')
 
     app.wsgi_app = ReverseProxied(app.wsgi_app)
     tr = WSGIContainer(app)
