@@ -311,11 +311,12 @@ class ESClient(object):
         except NameError:
             basestring = str
 
-        if isinstance( features, basestring ):
+        if isinstance( features, (basestring, unicode) ):
             features = [x.strip() for x in features.split(',')]
 
         if not isinstance( features, list ):
-            return conditons
+	    print 'type of features is {}'.format(type(features))
+            return conditions
 
         if 'geolocation' in features:
             conditions.append( {
@@ -631,8 +632,8 @@ class ESClient(object):
 		temporal_constraints = []
 	constraints = temporal_constraints + self._feature_conditions(features)
         if len(constraints) > 0:
-            if not q['query']['bool']['must']:
-                q['query'] = self._must(q['query'] + constraints)
+            if not 'must' in q['query']['bool']:
+                q['query'] = self._must([q['query']] + constraints)
             else: 
                 q['query']['bool']['must'] += constraints
             print q
@@ -693,8 +694,8 @@ class ESClient(object):
 
         constraints = temporal_constraints + self._feature_conditions(features)
         if len(constraints) > 0:
-            if not q['query']['bool']['must']:
-                q['query'] = self._must(q['query'] + constraints)
+            if not 'must' in q['query']['bool']:
+                q['query'] = self._must([q['query']] + constraints)
             else: 
                 q['query']['bool']['must'] += constraints
  
@@ -766,8 +767,8 @@ class ESClient(object):
 
         constraints = temporal_constraints + self._feature_conditions(features)
         if len(constraints) > 0:
-            if not q['query']['bool']['must']:
-                q['query'] = self._must(q['query'] + constraints)
+            if not 'must' in q['query']['bool']:
+                q['query'] = self._must([q['query']] + constraints)
             else: 
                 q['query']['bool']['must'] += constraints
 
