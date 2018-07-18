@@ -2,6 +2,7 @@
 from flask import current_app, jsonify, request, Response
 from flask_restplus import Resource
 from ui.rest_api import api
+from openstreetmap.osm_inserter import get_geonames_url
 import csv
 import StringIO
 import sparql
@@ -115,20 +116,56 @@ class GetCSV(Resource):
 
 
 datasets_parser = api.parser()
-datasets_parser.add_argument('limit', type=int, required=False, default=1000)
+datasets_parser.add_argument('limit', type=int, required=False, default=100)
 datasets_parser.add_argument('scroll_id', required=False)
-datasets_parser.add_argument('features', type=str, required=False, help='List any of: {temporal, geolocation}. Separate with commas.')
+datasets_parser.add_argument('has_features', type=str, required=False, help='List of required features (currently supported are {temporal, geolocation})')
+datasets_parser.add_argument('offset', type=int, required=False, help="For traditional pagination, alternative to scroll_id")
+datasets_parser.add_argument('l', type=str, required=False, help="List of location ids of the form gn:GEONAMES-ID")
+datasets_parser.add_argument('q', type=str, required=False, help="Full-text search query")
+datasets_parser.add_argument('temp_start', type=str, required=False)
+datasets_parser.add_argument('temp_end', type=str, required=False)
+datasets_parser.add_argument('temp_mstart', type=str, required=False)
+datasets_parser.add_argument('temp_mend', type=str, required=False)
+datasets_parser.add_argument('pattern', type=str, required=False)
 
 @get_ns.expect(datasets_parser)
 @get_ns.route('/datasets')
-@get_ns.doc(description="Get an indexed CSV by its URL")
+@get_ns.doc(description="Search for indexed CSVs")
 class GetCSV(Resource):
     def get(self):
-        limit = request.args.get('limit')
-        scroll_id = request.args.get('scroll_id')
-        features = [x.strip() for x in request.args.get('features').split(',')]
         es_search = current_app.config['ELASTICSEARCH']
-        res = es_search.get_all(limit, scroll_id, filter=features)
+
+        scroll_id = request.args.get('scroll_id')
+        if scroll_id:
+            res = es_search.scroll(scroll_id=scroll_id, scroll='1m')
+        else:
+            ls = request.args.getlist("l")
+            q = request.args.get("q")
+            temp_start = request.args.get("start")
+            temp_end = request.args.get("end")
+            temp_mstart = request.args.get("mstart")
+            temp_mend = request.args.get("mend")
+            pattern = request.args.get("pattern")
+            features = request.args.get("features")
+            limit = request.args.get("limit")
+            offset = request.args.get("offset")
+
+            temporal_constraints = es_search.get_temporal_constraints(temp_mstart, temp_mend, temp_start, temp_end, pattern)
+
+            if ls:
+                ls = [get_geonames_url(l[3:]) if l.startswith('gn:') else l for l in ls]
+
+                if q:
+                    res = es_search.searchEntitiesAndText(entities=ls, term=q, limit=limit, offset=offset, features=features, temporal_constraints=temporal_constraints)
+                else:
+                    res = es_search.searchEntities(entities=ls, limit=limit, offset=offset, features=features, temporal_constraints=temporal_constraints)
+
+            elif q:
+                res = es_search.searchText(q, limit=limit, offset=offset, features=features, temporal_constraints=temporal_constraints)
+
+            else:
+                res = es_search.get_all(limit, scroll_id, features=features, temporal_constraints=temporal_constraints)
+
         if '_scroll_id' in res:
             scrollId = res['_scroll_id']
             res['next'] = request.base_url + "?" + urllib.urlencode({'scroll_id': scrollId})
