@@ -564,7 +564,7 @@ class ESClient(object):
         }
         return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntitiesAndText(self, entities, term, limit=10, offset=0, intersect=True,
+    def searchEntitiesAndText(self, entities, term, limit=10, offset=None, intersect=True,
                               temporal_constraints=None, features=None):
         tmp = 'should'
         if intersect:
@@ -639,10 +639,13 @@ class ESClient(object):
                 q['query'] = self._must([q['query']] + constraints)
             else: 
                 q['query']['bool']['must'] += constraints
-            print q
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, scroll='1m')
+        
+        if offset:
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
 
-    def searchEntities(self, entities, limit=10, offset=0, intersect=False, temporal_constraints=None, features=None, count=False):
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll='1m')
+
+    def searchEntities(self, entities, limit=10, offset=None, intersect=False, temporal_constraints=None, features=None, count=False):
         entities = [e[4:] if e.startswith('osm:') else e for e in entities]
         tmp = 'should'
         if intersect:
@@ -705,9 +708,14 @@ class ESClient(object):
         if count:
             return self.es.count(index=self.indexName, doc_type='table', body=q)
         else:
-            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, scroll='1m')
+            if offset:
+                return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+            
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll='1m')
 
-    def searchText(self, term, limit=10, offset=0, temporal_constraints=None, features=None):
+
+
+    def searchText(self, term, limit=10, offset=None, temporal_constraints=None, features=None):
         q = {
             "_source": ["url", "column.header.value", "portal.*", "dataset.*", 'metadata_entities', 'data_entities', "metadata_temp_start",
                         "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern'],
@@ -764,7 +772,6 @@ class ESClient(object):
                 }
             }
         }
-
         tcs = temporal_constraints if temporal_constraints else []
         constraints = tcs + self._feature_conditions(features)
         if len(constraints) > 0:
@@ -773,7 +780,11 @@ class ESClient(object):
             else: 
                 q['query']['bool']['must'] += constraints
 
-        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset, scroll='1m')
+        if offset: 
+            return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, from_=offset)
+        
+        return self.es.search(index=self.indexName, doc_type='table', body=q, size=limit, scroll='1m')
+
 
     def update(self, id, fields):
         q = {
