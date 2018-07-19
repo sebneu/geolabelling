@@ -915,8 +915,7 @@ def format_results(results, row_cutoff, dataset=False):
 
 def format_table(doc, row_cutoff, locationsearch, max_rows=500):
     d = {"url": doc['_source']['url'], "portal": doc['_source']['portal']['uri'],
-         "publisher": doc['_source']['dataset'].get('publisher', ''),
-         "title": doc['_source']['dataset'].get('dataset_name', ''), 'rows': []}
+         "dataset": doc['_source']['dataset'], 'rows': []}
     d['headers'] = _get_doc_headers(doc, row_cutoff)
 
     d['locations'] = []

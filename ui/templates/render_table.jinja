@@ -4,24 +4,43 @@
 
 
 <div class="ui  container">
+  <h2 class="ui divider horizontal header">{{table['dataset']['name']}}
+    <div class="sub header">
+      <a href="{{table['dataset']['dataset_link']}}" target="_blank">{{table['dataset']['dataset_name']}}</a>
+    </div>
+  </h2>
 
-    <h2 class="ui divider horizontal header">{{data['title']}}
-    <div class="sub header">{{data['publisher']}}</div>
-    </h2>
-  <div class="ui center aligned segment"><h4><a href="{{data['portal']}}" target="_blank">{{data['portal']}}</a></h4></div>
 
   <div class="content segment" id="table_preview" style="height:400px;">
     {% include 'preview_table.jinja' %}
   </div>
 
   <div class="ui aligned segment">
-    {% for l in data['locations'] %}
-        <a class="ui label" href="{{l['uri']}}" target="_blank">
-          <i class="green marker icon"></i>
-          {{l['name']}}
-        </a>
+    {% for l in table['locations'] %}
+      <a class="ui label" href="{{l['uri']}}" target="_blank">
+        <i class="green marker icon"></i>
+        {{l['name']}}
+      </a>
     {% endfor %}
   </div>
+
+  <div class="ui center aligned segment">
+    <h4 class="ui divider horizontal header">
+        {% if 'publisher_link' in table['dataset'] %}
+            <a href="{{table['dataset']['publisher_link']}}" target="_blank">{{table['dataset']['publisher']}}</a>
+        {% else %}
+            {{table['dataset']['publisher']}}
+        {% endif %}
+        <div class="sub header">
+            <a href="{{table['portal']}}" target="_blank">{{table['portal']}}</a>
+        </div>
+    </h4>
+  </div>
+
+  <div class="ui center aligned segment">
+    <p>{{ table['dataset']['dataset_description'] }}</p>
+  </div>
+
 </div>
 
 
