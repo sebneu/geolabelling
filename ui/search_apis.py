@@ -293,12 +293,12 @@ class ESClient(object):
                 '_source': ['dataset.*', 'no_columns', 'no_rows', 'portal.*', 'url', 'metadata_entities',
                             'data_entities', 'metadata_temp_start', 'metadata_temp_end', 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
             }
-        tcs = temporal_constraints if temporal_constraints else []
-	constraints = tcs + self._feature_conditions(features)
-        if len(constraints) > 0:
+            tcs = temporal_constraints if temporal_constraints else []
+            constraints = tcs + self._feature_conditions(features)
+            if len(constraints) > 0:
                 doc['query'] = self._must(constraints)
                 
-        res = self.es.search(index=self.indexName, doc_type='table', body=doc, scroll='1m')
+            res = self.es.search(index=self.indexName, doc_type='table', body=doc, scroll='1m')
         if '_shards' in res:
             del res['_shards']
         return res
@@ -317,8 +317,8 @@ class ESClient(object):
         if isinstance( features, (basestring, unicode) ):
             features = [x.strip() for x in features.split(',')]
 
-        if not isinstance( features, list ):
-	    print 'type of features is {}'.format(type(features))
+        if not isinstance( features, list):
+            print 'type of features is {}'.format(type(features))
             return conditions
 
         if 'geolocation' in features:
@@ -633,7 +633,7 @@ class ESClient(object):
         }
 
         tcs = temporal_constraints if temporal_constraints else []
-	constraints = tcs + self._feature_conditions(features)
+        constraints = tcs + self._feature_conditions(features)
         if len(constraints) > 0:
             if not 'must' in q['query']['bool']:
                 q['query'] = self._must([q['query']] + constraints)
@@ -696,7 +696,7 @@ class ESClient(object):
                             "metadata_temp_end", 'data_temp_start', 'data_temp_end', 'data_temp_pattern']
 
         if not temporal_constraints:
-		temporal_constraints = []
+            temporal_constraints = []
 
         constraints = temporal_constraints + self._feature_conditions(features)
         if len(constraints) > 0:
