@@ -26,13 +26,13 @@
 
   <div class="ui center aligned segment">
     <h4 class="ui divider horizontal header">
-        <a href="{{table['portal']}}" target="_blank">{{table['portal']}}</a>
-        <div class="sub header">
         {% if 'publisher_link' in table['dataset'] %}
             <a href="{{table['dataset']['publisher_link']}}" target="_blank">{{table['dataset']['publisher']}}</a>
         {% else %}
             {{table['dataset']['publisher']}}
         {% endif %}
+        <div class="sub header">
+            <a href="{{table['portal']}}" target="_blank">{{table['portal']}}</a>
         </div>
     </h4>
   </div>
