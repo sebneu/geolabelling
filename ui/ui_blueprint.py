@@ -343,11 +343,8 @@ def sparql():
 
 @ui.route('/semantics/<path:url>', methods=['GET'])
 def semantics_view(url):
-    es_search = current_app.config['ELASTICSEARCH']
-    doc = es_search.get(url, columns=False)
-    res = search_apis.format_table(doc=doc, locationsearch=current_app.config['LOCATION_SEARCH'], row_cutoff=False)
-    return render("semantics/table_view.jinja", {'data': render_template('preview_table.jinja', table=res), 'locations': res['locations'], 'url': res['url'], 'title': res['title'], 'portal': res['portal'], 'publisher': res['publisher']})
-
+    res = get_preview_table(url)
+    return render_template('render_table.jinja', table=res)
 
 @ui.route('/geotagging', methods=['GET'])
 def geotagging():
