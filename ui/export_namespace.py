@@ -137,7 +137,7 @@ class GetCSV(Resource):
 
         scroll_id = request.args.get('scroll_id')
         if scroll_id:
-            res = es_search.scroll(scroll_id=scroll_id, scroll='1m')
+            res = es_search.es.scroll(scroll_id=scroll_id, scroll='1m')
         else:
             ls = request.args.getlist("l")
             q = request.args.get("q")
