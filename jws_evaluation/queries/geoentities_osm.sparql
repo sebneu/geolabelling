@@ -1,0 +1,20 @@
+PREFIX : <http://data.wu.ac.at/ns/osm#>
+
+CONSTRUCT {
+  ?geoentity rdfs:label ?label;
+    geo:lat ?lat; geo:long ?long ;
+    gn:parentFeature ?parent;    
+    gn:parentCountry ?pc ;  
+    geosparql:hasGeometry ?geometry .
+} WHERE {
+  [ :display_name ?label ; 
+    
+    :osm_region ?parent ;
+    :osm_id ?id ; :osm_type ?type ;
+    :address [ :country ?country ];
+    :lat ?lat ; :lon ?long ;
+    :geojson [ :coordinates ?geometry] #this is simplifying!
+  ] .
+  ?pc gn:countryCode ?country .
+  BIND(IRI(CONCAT(STR(osm:),?type,"/",?id)) AS ?geoentity)
+}

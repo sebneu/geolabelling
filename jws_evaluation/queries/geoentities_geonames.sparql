@@ -1,0 +1,25 @@
+CONSTRUCT {
+  ?geoentity rdfs:label ?label ; 
+     gn:parentFeature ?parent ;
+     gn:parentCountry ?c ; 
+     gn:postalCode ?code ;
+     geo:lat ?lat ; geo:lat ?long ;
+     owl:sameAs ?external .
+} WHERE {
+  ?geoentity gn:name ?label .
+  OPTIONAL { ?geoentity gn:officialName ?label 
+    FILTER ( LANGMATCHES(LANG(?label), "EN") || 
+             LANG(?label) = "" ) }
+  OPTIONAL { ?geoentity gn:alternateName ?label 
+    FILTER ( LANGMATCHES(LANG(?label), "EN") || 
+             LANGMATCHES(LANG(?label), "DE") || 
+             LANG(?label) = "" ) }
+     
+  ?geoentity gn:parentCountry ?c ;
+     geo:lat ?lat ; geo:lat ?long .
+  OPTIONAL { ?geoentity gn:parentFeature ?parent }
+  # external links if available
+  OPTIONAL { ?geoentity rdfs:seeAlso ?external }
+  # postal code literals
+  OPTIONAL { ?wd gn:postalCode ?code }
+}

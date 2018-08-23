@@ -1,0 +1,26 @@
+CONSTRUCT { 
+  ?event rdfs:label ?label ; dcterms:isPartOf ?parent ; dcterms:coverage ?geocoordinates ;
+         timex:hasStartTime ?startDateTime ; timex:hasEndTime ?endDateTime ; dcterms:spatial ?geoentity . 
+} 
+
+WHERE {
+  # find events with (for the moment) English, German, or non-language-specific labels:
+  ?event wdt:P31/wdt:P279* wd:Q1190554 . ?event rdfs:label ?label . 
+  FILTER ( LANGMATCHES(LANG(?label), "EN") || LANGMATCHES(LANG(?label), "DE") || LANG(?label) = "" )
+  
+  { # restrict to certain event categories, e.g. (for the moment) elections and sports events:								  #sports competitions 
+   { ?event wdt:P31/wdt:P279* wd:Q40231 } UNION { ?event wdt:P31/wdt:P279* wd:Q13406554 }
+  }
+  
+  {
+    { ?event wdt:P585 ?startDateTime . FILTER ( ?startDateTime > "1900-01-01T00:00:00"^^xsd:dateTime) }
+    UNION 
+    { ?event wdt:P580 ?startDateTime. FILTER ( ?startDateTime > "1900-01-01T00:00:00"^^xsd:dateTime) 
+      ?event wdt:P582 ?endDateTime. FILTER ( DATATYPE(?endDateTime) = xsd:dateTime) } 
+  }
+  BIND(IF(bound(?endDateTime), ?endDateTime, xsd:dateTime(CONCAT(STR(xsd:date(?startDateTime)),"T23:59:59"))) AS ?endDateTime )
+  
+  OPTIONAL { ?event wdt:P361 ?parent }
+  OPTIONAL { ?event wdt:P276?/(wdt:P17|wdt:P131) ?geoentity }
+  OPTIONAL { ?event wdt:P276?/wdt:P625 ?geocoordinates }
+} 

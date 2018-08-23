@@ -1,0 +1,17 @@
+CONSTRUCT {
+  ?geoentity owl:sameAs ?wd ; 
+     gn:postalCode ?code; 
+     owl:sameAs ?osm ; 
+     owl:sameAs ?nuts .
+  ?nuts wdt:P605 ?n .
+} WHERE {
+  ?wd wdt:P1566 ?geoentity .
+  # postal code literals
+  OPTIONAL { ?wd wdt:P281 ?code }
+  # NUTS identifier
+  OPTIONAL { ?wd wdt:P605 ?n.
+    BIND (CONCAT("<http://dd.eionet.europa.eu/vocabulary
+          concept/common/nuts/", ?n,">") AS ?nuts) }
+  # OSM relations
+  OPTIONAL { ?wd wdt:P402 ?osm }
+}

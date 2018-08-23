@@ -1,0 +1,33 @@
+CONSTRUCT {
+   ?event rdfs:label ?label ; dcterms:isPartOf ?parent ; dcterms:spatial ?geoentity ;
+          timex:hasStartTime ?startDateTime ; timex:hasEndTime ?endDateTime .
+} 
+
+WHERE {
+  {
+    { ?event skos:prefLabel ?label } UNION { ?event skos:altLabel ?label } UNION { ?event rdfs:label ?label }
+  }
+  
+  ?event time:intervalFinishedBy ?end ; time:intervalStartedBy ?start.
+
+  OPTIONAL { ?event periodo:spatialCoverage ?geoentity } 
+  OPTIONAL { ?event dcterms:spatial ?geoentity }
+  OPTIONAL { ?event dcterms:isPartOf ?parent. }
+  
+  OPTIONAL{ ?end time:hasDateTimeDescription ?endTime .
+    OPTIONAL{ ?endTime time:year ?endYear }
+    OPTIONAL{ ?endTime periodo:latestYear ?endYear } 
+  }
+  OPTIONAL{ ?start time:hasDateTimeDescription ?startTime .
+    OPTIONAL{ ?startTime time:year ?startYear }
+    OPTIONAL{ ?startTime periodo:earliestYear ?startYear } 
+  }
+  OPTIONAL{ ?start (!periodo:aux)+ ?startYear. FILTER (isLiteral(?startYear)) }
+  OPTIONAL{ ?end (!periodo:aux)+ ?endYear. FILTER (isLiteral(?startYear)) }
+
+  FILTER( ?startYear >= "1900"^^xsd:gYear || xsd:integer(?startYear) >= 1900 || 
+          ?endYear >= "1900"^^xsd:gYear || xsd:integer(?endYear) >= 1900 )
+
+  BIND(xsd:dateTime(CONCAT(STR(?startYear),"-01-01T00:00:00")) AS ?startDateTime )
+  BIND(xsd:dateTime(CONCAT(STR(?endYear),"-12-31T23:59:59")) AS ?endDateTime ) 
+}
