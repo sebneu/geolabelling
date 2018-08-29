@@ -16,6 +16,9 @@ from ui.utils import mongo_collections_utils
 from ui.utils import export_rdf
 
 import rdflib
+import time
+import csv
+import sys
 
 
 class LocationSearch:
@@ -215,15 +218,20 @@ class ESClient(object):
         logging.info("ESClient, created index " + str(res))
 
 
-    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels):
+    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog=None):
         """ This reindexes the table with id URL"""
         download_url = None
         if not content:
             download_url = url
         table, error=None, None
         try:
+            parse_start = time.time()
             yacp = YACParser(content=content, url=download_url, filename=fileName, sample_size=1800)
             tables = parseDataTables(yacp, url=url)
+            parse_end = time.time()
+            if timelog and 'row' in timelog:
+                timelog['row']['parse'] = str(parse_end - parse_start)
+
             if len(tables)>1:
                 raise ValueError("Currently we support only indexing of single tables per URL (input {})".format(url))
             table=tables[0]
@@ -235,6 +243,7 @@ class ESClient(object):
 
         dt = self.mappingConfig['generator'](url=url, inputTable=table, error=error, portalInfo=portalInfo)
 
+        geotagging_start = time.time()
         # add dataset title description etc
         meta_loc_ann = []
         if datasetInfo:
@@ -256,12 +265,23 @@ class ESClient(object):
                 regions |= geotagging.get_all_subregions(l, portalInfo['iso'])
             loc_annotation = geotagging.from_dt(dt, orig_country_code=portalInfo['iso'], regions=regions, store_labels=store_labels)
 
+        geotagging_end = time.time()
+        if timelog and 'row' in timelog:
+            timelog['row']['geotagging'] = str(geotagging_end - geotagging_start)
+
         dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
         return dt
 
-    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False):
-        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels)
-        return self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False, timelog=None):
+        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog)
+
+        elastic_start = time.time()
+        resp = self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)
+        elastic_end = time.time()
+        elastic_time = elastic_end - elastic_start
+        if timelog and 'row' in timelog:
+            timelog['row']['elasticsearch'] = str(elastic_time)
+        return resp
 
     def bulkIndexTables(self, tables_bulk, portalInfo, geotagging, store_labels):
         body = u''

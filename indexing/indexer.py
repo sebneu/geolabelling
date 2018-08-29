@@ -8,6 +8,8 @@ from collections import defaultdict
 import pycountry
 import requests
 import yaml
+import csv
+import time
 
 from indexing import language_mapping
 from services import time_tagger
@@ -93,7 +95,7 @@ def get_dataset_info(dataset, portal, format, heideltime_path, language):
     return res
 
 
-def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size):
+def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog=None):
     api_url = odpwAPI + 'portal/' + portal + '/' + str(snapshot) + '/datasets'
     resp = requests.get(api_url)
     if resp.status_code == 200:
@@ -106,10 +108,15 @@ def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_
 
                 if resp.status_code == 200:
                     dataset = resp.json()
+                    start_heideltime = time.time()
                     datasetinfo = get_dataset_info(dataset, portal, format, heideltime_path, language)
+                    end_heideltime = time.time()
                     for url in datasetinfo:
                         try:
                             content = getFile(url, datamonitor=False, max_file_size=max_file_size)
+                            if timelog:
+                                timelog['row'] = {'url': url, 'size': sys.getsizeof(content),
+                                                  'time': str(datetime.datetime.now), 'heideltime': str(end_heideltime - start_heideltime)}
                             yield url, content, datasetinfo[url]
                         except Exception as e:
                             logging.error('Error while downloading dataset: ' + url)
@@ -125,18 +132,37 @@ def getURLInfo(datamonitorAPI,url):
 
 urlPortalID={}
 
-def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False, max_file_size=-1, store_labels=False):
+def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False, max_file_size=-1, store_labels=False, timelog=False):
     status=defaultdict(int)
     portal=portalInfo['id']
 
-    for url, content, dsfields in getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size):
+    if timelog:
+        timelog = {'path': str(datetime.date.today()) + '_' + portal + '_' + 'timelog.csv',
+                   'fields': ['url', 'size', 'time', 'total', 'parse', 'heideltime', 'geotagging', 'elasticsearch']}
+        with open(timelog['path'], 'w') as f:
+            csvw = csv.writer(f)
+            csvw.writerow(timelog['fields'])
+
+    start_total = time.time()
+    for url, content, dsfields in getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog):
         logging.info("Dataset from ODPW: " + portal + ", snapshot: " + str(snapshot) + ", URL: " + url)
 
         try:
             if not repair or (repair and not es.exists(url)):
-                resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging, store_labels=store_labels)
+
+                resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging, store_labels=store_labels, timelog=timelog)
                 logging.info("ES INDEXED, URL: " + url + ", status: " + resp['result'])
                 status['ok']+=1
+
+                # total processing time logging
+                end_total = time.time()
+                if timelog and 'row' in timelog:
+                    timelog['total'] = str(end_total - start_total)
+                    with open(timelog['path'], 'a') as f:
+                        csvw = csv.DictWriter(f, timelog['fields'])
+                        csvw.writerow(timelog['row'])
+                start_total = time.time()
+
         except Exception as e:
             traceback.print_stack()
             logging.error("ES INDEX " + portal + ", URL: " + url + ", Error:" + str(e))
@@ -188,6 +214,7 @@ def setupCLI(pa):
     pa.add_argument("--bulk", help='bulk insert to elasticsearch', action='store_true')
     pa.add_argument("--disable-heideltime", help='disable Heideltime tagging to increase indexing speed', action='store_true')
     pa.add_argument("--store-labels", help='add URLs + labels for an indexed document', action='store_true')
+    pa.add_argument("--log-times", dest='timelog', help='log time for downloading indexing', action='store_true')
 
 
 def cli(args, es):
@@ -254,4 +281,4 @@ def cli(args, es):
                                geotagging=geotagging, max_file_size=args.max_size, store_labels=args.store_labels)
 
             else:
-                status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size, store_labels=args.store_labels)
+                status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size, store_labels=args.store_labels, timelog=args.timelog)
