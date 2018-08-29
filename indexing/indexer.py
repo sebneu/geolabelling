@@ -116,7 +116,7 @@ def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_
                             content = getFile(url, datamonitor=False, max_file_size=max_file_size)
                             if timelog:
                                 timelog['row'] = {'url': url, 'size': sys.getsizeof(content),
-                                                  'time': str(datetime.datetime.now), 'heideltime': str(end_heideltime - start_heideltime)}
+                                                  'time': str(datetime.datetime.now()), 'heideltime': str(end_heideltime - start_heideltime)}
                             yield url, content, datasetinfo[url]
                         except Exception as e:
                             logging.error('Error while downloading dataset: ' + url)
@@ -157,11 +157,12 @@ def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, 
                 # total processing time logging
                 end_total = time.time()
                 if timelog and 'row' in timelog:
-                    timelog['total'] = str(end_total - start_total)
+                    timelog['row']['total'] = str(end_total - start_total)
                     with open(timelog['path'], 'a') as f:
                         csvw = csv.DictWriter(f, timelog['fields'])
                         csvw.writerow(timelog['row'])
                 start_total = time.time()
+
 
         except Exception as e:
             traceback.print_stack()
