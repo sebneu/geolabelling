@@ -39,6 +39,9 @@ def iter_datasets(es):
         res = get_all(es, q, 'eucsv', scroll_id=scrollId)
     print 'total:', total
 
+    print 'min rows', str(min(rows))
+    print 'max rows', str(max(rows))
+
     print 'mean'
     print 'rows', str(sum(rows) / float(len(rows)))
     print 'annotations', str(sum(annotations) / float(len(annotations)))

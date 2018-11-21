@@ -428,11 +428,11 @@
         slug = response.vizzes[index].slug
         $(num_visuals).text(i + '/' + response.found)
         $(slug_visuals).text(slug)
-        $(table_visual).html('<iframe src="https://doh.23degrees.io/embed/'+slug+'" style="padding:5px 0!important; width:100%!important; height:100%!important; min-height:360px!important; max-height:620px!important" frameborder="0" scrolling="no" id="twentythree"></iframe>')
+        $(table_visual).html('<iframe src="https://app.23degrees.io/embed/'+slug+'" style="padding:5px 0!important; width:100%!important; height:100%!important; min-height:360px!important; max-height:620px!important" frameborder="0" scrolling="no" id="twentythree"></iframe>')
     }
 
     function visualAvailable(button) {
-        var twentythreeurl = "https://doh.23degrees.io/services/pub/api/v1/opendata/bysourceurl";
+        var twentythreeurl = "https://app.23degrees.io/services/pub/api/v1/opendata/bysourceurl";
         url = $(button).closest('.ui .grid');
         var urlval = url.find('div.header').children().attr('href');
         // Send the data using post
