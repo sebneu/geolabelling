@@ -272,8 +272,11 @@ class ESClient(object):
         dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
         return dt
 
-    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False, timelog=None):
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False, index_errors=False, timelog=None):
         dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog)
+        # skip if table could not get parsed
+        if not index_errors and 'parsingerror' in dt:
+            return {'result': dt['parsingerror']}
 
         elastic_start = time.time()
         resp = self.es.index(index=self.indexName, doc_type="table", id=url, body=dt)

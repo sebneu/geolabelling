@@ -56,7 +56,7 @@ def get_dataset_info(dataset, portal, format, heideltime_path, language):
             url = dist['contentUrl']
             dist_format = dist.get('encodingFormat', '')
 
-            if url.endswith('.' + format) or format in dist_format:
+            if format==None or (url.endswith('.' + format) or format in dist_format.lower()):
                 if url in urlPortalID and portal not in urlPortalID[url]:
                     urlPortalID[url].append(portal)
                 else:
@@ -95,7 +95,7 @@ def get_dataset_info(dataset, portal, format, heideltime_path, language):
     return res
 
 
-def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog=None):
+def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog=None, single_url=None):
     api_url = odpwAPI + 'portal/' + portal + '/' + str(snapshot) + '/datasets'
     resp = requests.get(api_url)
     if resp.status_code == 200:
@@ -112,15 +112,16 @@ def getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_
                     datasetinfo = get_dataset_info(dataset, portal, format, heideltime_path, language)
                     end_heideltime = time.time()
                     for url in datasetinfo:
-                        try:
-                            content = getFile(url, datamonitor=False, max_file_size=max_file_size)
-                            if timelog:
-                                timelog['row'] = {'url': url, 'size': sys.getsizeof(content),
-                                                  'time': str(datetime.datetime.now()), 'heideltime': str(end_heideltime - start_heideltime)}
-                            yield url, content, datasetinfo[url]
-                        except Exception as e:
-                            logging.error('Error while downloading dataset: ' + url)
-                            logging.error(str(e))
+                        if single_url == None or single_url == url:
+                            try:
+                                content = getFile(url, datamonitor=False, max_file_size=max_file_size)
+                                if timelog:
+                                    timelog['row'] = {'url': url, 'size': sys.getsizeof(content),
+                                                      'time': str(datetime.datetime.now()), 'heideltime': str(end_heideltime - start_heideltime)}
+                                yield url, content, datasetinfo[url]
+                            except Exception as e:
+                                logging.error('Error while downloading dataset: ' + url)
+                                logging.error(str(e))
 
             except Exception as e:
                 logging.error('Error while retrieving all datasets: ' + d_id)
@@ -132,7 +133,8 @@ def getURLInfo(datamonitorAPI,url):
 
 urlPortalID={}
 
-def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False, max_file_size=-1, store_labels=False, timelog=False):
+def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, geotagging=False, repair=False,
+          max_file_size=-1, store_labels=False, timelog=False, index_errors=False, single_url=None):
     status=defaultdict(int)
     portal=portalInfo['id']
 
@@ -144,31 +146,31 @@ def index(es, portalInfo, snapshot, format, odpwAPI, heideltime_path, language, 
             csvw.writerow(timelog['fields'])
 
     start_total = time.time()
-    for url, content, dsfields in getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog):
-        logging.info("Dataset from ODPW: " + portal + ", snapshot: " + str(snapshot) + ", URL: " + url)
+    for url, content, dsfields in getURLandDatasetInfoPerPortal(odpwAPI, portal, snapshot, format, heideltime_path, language, max_file_size, timelog, single_url):
+            logging.info("Dataset from ODPW: " + portal + ", snapshot: " + str(snapshot) + ", URL: " + url)
 
-        try:
-            if not repair or (repair and not es.exists(url)):
+            try:
+                if not repair or (repair and not es.exists(url)):
 
-                resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields, geotagging=geotagging, store_labels=store_labels, timelog=timelog)
-                logging.info("ES INDEXED, URL: " + url + ", status: " + resp['result'])
-                status['ok']+=1
+                    resp = es.indexTable(url=url, content=content, portalInfo=portalInfo, datasetInfo=dsfields,
+                                         geotagging=geotagging, store_labels=store_labels, timelog=timelog, index_errors=index_errors)
+                    logging.info("ES INDEXED, URL: " + url + ", status: " + resp['result'])
+                    status['ok']+=1
 
-                # total processing time logging
-                end_total = time.time()
-                if timelog and 'row' in timelog:
-                    timelog['row']['total'] = str(end_total - start_total)
-                    with open(timelog['path'], 'a') as f:
-                        csvw = csv.DictWriter(f, timelog['fields'])
-                        csvw.writerow(timelog['row'])
-                start_total = time.time()
+                    # total processing time logging
+                    end_total = time.time()
+                    if timelog and 'row' in timelog:
+                        timelog['row']['total'] = str(end_total - start_total)
+                        with open(timelog['path'], 'a') as f:
+                            csvw = csv.DictWriter(f, timelog['fields'])
+                            csvw.writerow(timelog['row'])
+                    start_total = time.time()
 
-
-        except Exception as e:
-            traceback.print_stack()
-            logging.error("ES INDEX " + portal + ", URL: " + url + ", Error:" + str(e))
-            status['error'] += 1
-            status[str(e.__class__)] += 1
+            except Exception as e:
+                traceback.print_stack()
+                logging.error("ES INDEX " + portal + ", URL: " + url + ", Error:" + str(e))
+                status['error'] += 1
+                status[str(e.__class__)] += 1
     return status
 
 
@@ -204,7 +206,7 @@ def name():
     return 'Indexer'
 
 def setupCLI(pa):
-    pa.add_argument("-f", "--format", help='filter by file format', dest='format', default="csv")
+    pa.add_argument("-f", "--format", help='filter by file format', dest='format')
     pa.add_argument("--setup")
     pa.add_argument("-s", "--snapshot", help='snapshot', dest='snapshot', default=None)
     pa.add_argument("-p", "--portal", help='filter by portalid ( sperated by whitespace)', dest='portal', nargs='+')
@@ -216,6 +218,7 @@ def setupCLI(pa):
     pa.add_argument("--disable-heideltime", help='disable Heideltime tagging to increase indexing speed', action='store_true')
     pa.add_argument("--store-labels", help='add URLs + labels for an indexed document', action='store_true')
     pa.add_argument("--log-times", dest='timelog', help='log time for downloading indexing', action='store_true')
+    pa.add_argument("--index-errors", help='Index datasets if table could not get parsed', default=False, type=bool)
 
 
 def cli(args, es):
@@ -254,32 +257,33 @@ def cli(args, es):
     portalIDs = args.portal if args.portal else portalInfo.keys()
     snapshot = int(args.snapshot) if args.snapshot else getCurrentSnapshot()
 
-    if args.url:
-        for url in args.url:
-            # just index single URLs
-            resp= es.indexTable(url=url, portalInfo=portalInfo[args.portal[0]], geotagging=geotagging)
-            logging.info("ES INDEXED: " + url + ", STATUS: " + resp['result'])
-    else:
-        for portal in portalIDs:
-            status = {}
-            if portal not in portalInfo:
-                logging.error("Portal not known: " + portal)
-                exit()
+    #if args.url:
+    #    for url in args.url:
+    #        # just index single URLs
+    #        resp= es.indexTable(url=url, portalInfo=portalInfo[args.portal[0]], geotagging=geotagging)
+    #        logging.info("ES INDEXED: " + url + ", STATUS: " + resp['result'])
+    for portal in portalIDs:
+        status = {}
+        if portal not in portalInfo:
+            logging.error("Portal not known: " + portal)
+            exit()
 
-            p = portalInfo[portal]
-            iso_code = p['iso'].lower()
-            lang = language_mapping.iso_to_language(iso_code)
-            if not lang:
-                try:
-                    lang = pycountry.languages.get(alpha_2=iso_code)
-                    lang = lang.name
-                except:
-                    lang = 'english'
-            lang = lang.upper()
-            logging.info("Starting indexing: " + portal + ", snapshot: " + str(snapshot) + ", format: " +args.format)
-            if args.bulk:
-                bulkIndex(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang,
-                               geotagging=geotagging, max_file_size=args.max_size, store_labels=args.store_labels)
+        p = portalInfo[portal]
+        iso_code = p['iso'].lower()
+        lang = language_mapping.iso_to_language(iso_code)
+        if not lang:
+            try:
+                lang = pycountry.languages.get(alpha_2=iso_code)
+                lang = lang.name
+            except:
+                lang = 'english'
+        lang = lang.upper()
+        logging.info("Starting indexing: " + portal + ", snapshot: " + str(snapshot))
+        if args.bulk:
+            bulkIndex(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang,
+                           geotagging=geotagging, max_file_size=args.max_size, store_labels=args.store_labels)
 
-            else:
-                status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging, repair=args.repair, max_file_size=args.max_size, store_labels=args.store_labels, timelog=args.timelog)
+        else:
+            status=index(es, p, snapshot, args.format, odpwAPI, heideltime_path, lang, geotagging=geotagging,
+                         repair=args.repair, max_file_size=args.max_size, store_labels=args.store_labels,
+                         timelog=args.timelog, index_errors=args.index_errors, single_url=args.url)
