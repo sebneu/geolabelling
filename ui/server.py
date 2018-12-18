@@ -85,6 +85,7 @@ def cli(args, es):
     app.config['GEO_TAGGER'] = geo_tagger.GeoTagger(dbhost, dbport)
     app.config['LOCATION_SEARCH'] = search_apis.LocationSearch(dbhost, dbport)
     app.config['ELASTICSEARCH'] = es
+    app.config['HEIDELTIME'] = config.get('heideltime', None)
     app.config['23TOKEN'] = config.get('twentythree', None)
 
     blueprint = Blueprint('api', __name__, url_prefix='/' + url_prefix + '/api/v1')

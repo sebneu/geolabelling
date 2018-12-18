@@ -1,6 +1,10 @@
+import urllib2
 
+import requests
 from flask import current_app, jsonify, request, Response
 from flask_restplus import Resource
+
+from services import time_tagger
 from ui.rest_api import api
 from openstreetmap.osm_inserter import get_geonames_url
 import csv
@@ -14,6 +18,7 @@ get_ns = api.namespace('get', description='Operations to get the datasets')
 rdf_ns = api.namespace('rdf', description='Operations to convert the data to RDF')
 temporal_ns = api.namespace('temporal', description='Operations to get the temporal KG')
 random_ns = api.namespace('random', description='Operations to generate random samples for evaluation')
+index_ns = api.namespace('index', description='Operations to index new datasets')
 
 
 PERIOD_QUERY = "PREFIX timex: <http://data.wu.ac.at/ns/timex#> \n" \
@@ -246,6 +251,83 @@ class GetCSV(Resource):
             cw.writerow(row)
         csv_file = si.getvalue().strip('\r\n')
         return Response(csv_file, mimetype='text/csv')
+
+
+
+@index_ns.route('/ckan')
+@index_ns.doc(params={'url': "The link to the CKAN metadata description", 'portal_url': "The portal URL", 'iso2': "The ISO2 country code of the portal"},
+              description="Index a dataset by its CKAN metadata description")
+class GetCSV(Resource):
+    def get(self):
+        url = request.args.get("url")
+        es = current_app.config['ELASTICSEARCH']
+        return_data = {}
+
+        portalInfo = {
+            "id": '',
+            "iso": request.args.get("iso2"),
+            "uri": request.args.get("portal_url"),
+            "software": 'CKAN',
+            "apiuri": request.args.get("portal_url")
+        }
+
+        res = requests.get(url)
+        if res.status_code == 200:
+            dataset = res.json()
+            if 'result' in dataset:
+                dataset = dataset['result']
+
+            dataset_name = dataset.get('title', '')
+            dataset_link = url
+            dataset_description = dataset.get('notes', '')
+            keywords = [t['name'] for t in dataset.get('tags', []) if isinstance(t, dict) and 'name' in t]
+            publisher = dataset.get('publisher', '')
+            publisher_link = dataset.get('publisher_link', '')
+            publisher_email = dataset.get('publisher_email', '')
+
+            for dist in dataset.get('resources', []):
+                dist_url = dist['url']
+                dist_format = dist.get('format', '')
+                if 'csv' in dist_format.lower():
+                    dsfields = {}
+                    fields = {'dataset': dsfields}
+                    if time_tagger:
+                        start, end, published, modified = time_tagger.get_temporal_information(dist, dataset,
+                                                                                               heideltime_path=current_app.config['HEIDELTIME'])
+                        if start and end:
+                            fields['metadata_temp_start'] = start
+                            fields['metadata_temp_end'] = end
+                        if published:
+                            fields['published'] = published
+                        if modified:
+                            fields['modified'] = modified
+
+                    name = dist.get('name', '')
+                    if name:
+                        dsfields['name'] = name
+                    if dataset_name:
+                        dsfields['dataset_name'] = dataset_name
+                    if dataset_link:
+                        dsfields['dataset_link'] = dataset_link
+                    if dataset_description:
+                        dsfields['dataset_description'] = dataset_description
+                    if keywords and isinstance(keywords, list):
+                        dsfields['keywords'] = keywords
+                    if publisher:
+                        dsfields['publisher'] = publisher
+                    if publisher_link:
+                        dsfields['publisher_link'] = publisher_link
+                    if publisher_email:
+                        dsfields['publisher_email'] = publisher_email
+
+                    response = urllib2.urlopen(dist_url)
+                    content = response.read()
+                    resp = es.indexTable(url=dist_url, content=content, portalInfo=portalInfo, datasetInfo=fields,
+                                         geotagging=current_app.config['GEO_TAGGER'], store_labels=True, index_errors=False)
+                    return_data[dist_url] = resp
+
+        return jsonify(return_data)
+
 
 
 
