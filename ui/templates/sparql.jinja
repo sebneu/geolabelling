@@ -108,7 +108,7 @@
 
 
   var yasgui = YASGUI(document.getElementById("yasgui"), {
-    yasqe:{sparql:{endpoint:'http://data.wu.ac.at/odgraphsearch/query/'}}
+    yasqe:{sparql:{endpoint:'https://data.wu.ac.at/odgraphsearch/query/'}}
   });
   tab = yasgui.current()
   if(tab) {
@@ -118,7 +118,7 @@
   var yasqe1 = YASQE(document.getElementById("ex_1"), {
 	sparql: {
 		showQueryButton: false,
-		endpoint:'http://data.wu.ac.at/odgraphsearch/query/'
+		endpoint:'https://data.wu.ac.at/odgraphsearch/query/'
 	}
   });
   yasqe1.setValue(ex1)
