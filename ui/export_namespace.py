@@ -255,11 +255,12 @@ class GetCSV(Resource):
 
 
 @index_ns.route('/ckan')
-@index_ns.doc(params={'url': "The link to the CKAN metadata description", 'portal_url': "The portal URL", 'iso2': "The ISO2 country code of the portal"},
+@index_ns.doc(params={'url': "The link to the CKAN metadata description", 'portal_url': "The portal URL", 'iso2': "The ISO2 country code of the portal", 'delimiter': "The CSV delimiter. Default is a detection algorithm."},
               description="Index a dataset by its CKAN metadata description")
 class GetCSV(Resource):
     def get(self):
         url = request.args.get("url")
+        delimiter = request.args.get("delimiter")
         es = current_app.config['ELASTICSEARCH']
         return_data = {}
 
@@ -323,7 +324,7 @@ class GetCSV(Resource):
                     response = urllib2.urlopen(dist_url)
                     content = response.read()
                     resp = es.indexTable(url=dist_url, content=content, portalInfo=portalInfo, datasetInfo=fields,
-                                         geotagging=current_app.config['GEO_TAGGER'], store_labels=True, index_errors=False)
+                                         geotagging=current_app.config['GEO_TAGGER'], store_labels=True, index_errors=False, delimiter=delimiter)
                     return_data[dist_url] = resp
 
         return jsonify(return_data)

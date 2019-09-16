@@ -218,7 +218,7 @@ class ESClient(object):
         logging.info("ESClient, created index " + str(res))
 
 
-    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog=None):
+    def get_index_body(self, url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog=None, delimiter=None):
         """ This reindexes the table with id URL"""
         download_url = None
         if not content:
@@ -226,7 +226,7 @@ class ESClient(object):
         table, error=None, None
         try:
             parse_start = time.time()
-            yacp = YACParser(content=content, url=download_url, filename=fileName, sample_size=1800)
+            yacp = YACParser(content=content, url=download_url, filename=fileName, sample_size=1800, delimiter=delimiter)
             tables = parseDataTables(yacp, url=url)
             parse_end = time.time()
             if timelog and 'row' in timelog:
@@ -272,8 +272,8 @@ class ESClient(object):
         dt['transaction_time'] = datetime.datetime.now().strftime("%Y-%m-%d")
         return dt
 
-    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False, index_errors=False, timelog=None):
-        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog)
+    def indexTable(self, url, content=None, fileName=None, portalInfo = None, datasetInfo=None, geotagging=None, store_labels=False, index_errors=False, timelog=None, delimiter=None):
+        dt = self.get_index_body(url, content, fileName, portalInfo, datasetInfo, geotagging, store_labels, timelog, delimiter)
         # skip if table could not get parsed
         if not index_errors and 'parsingerror' in dt:
             return {'result': dt['parsingerror']}
